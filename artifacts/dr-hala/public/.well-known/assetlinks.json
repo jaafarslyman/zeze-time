@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.drhala.app",
+        "sha256_cert_fingerprints": ["A9:63:EF:27:99:6C:2D:C2:21:22:37:F3:A7:CF:55:95:37:2C:DA:56:53:E2:46:D3:BB:93:FF:74:92:37:C9:FB"]
+      }
+    }]

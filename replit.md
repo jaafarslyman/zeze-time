@@ -1,15 +1,17 @@
-# [Project name]
+# Dr. Hala
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A bilingual Arabic/English study and wellbeing dashboard for organizing tasks, habits, exams, and focused study sessions.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/dr-hala run dev` — run the Dr. Hala web app
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Dr. Hala stores personal app data in the current browser's local storage; it does not use the API server or database.
+- Source: [jaafarslyman/Supebun8](https://github.com/jaafarslyman/Supebun8)
 
 ## Stack
 
@@ -22,23 +24,26 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/dr-hala/` — Dr. Hala web app, its styles, and static assets
+- `lib/api-spec/openapi.yaml` — shared API contract
+- `lib/db/src/schema/` — shared database schema
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- The Dr. Hala dashboard is client-only; personal data stays in the browser that created it.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Manage tasks, habits, and exam dates; use the study timer, calendar, and daily progress summaries.
+- Switch between Arabic and English.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+_No additional user preferences recorded._
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+_No additional project-specific gotchas recorded._
 
 ## Pointers
 
