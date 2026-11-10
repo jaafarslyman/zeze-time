@@ -5,36 +5,22 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import {
-  ArrowLeft, ArrowRight, BookOpen, CalendarDays, Check, CheckCircle2,
-  ChevronLeft, ChevronRight, Circle, Clock3, Flower2, Heart, ListChecks, Menu,
-  Pause, Pencil, Play, Plus, RotateCcw, Sparkles, Sprout, Target, Trash2,
-  X, Languages, Sun, Leaf, BarChart3,
+  ArrowRight, BarChart3, BookOpen, CalendarDays, Check, CheckCircle2, ChevronLeft,
+  ChevronRight, Circle, Clock3, Heart, Leaf, ListChecks, Pause, Pencil, Play,
+  Plus, RotateCcw, Sparkles, Sprout, Trash2, X,
 } from 'lucide-react';
-import {
-  Route,
-  Switch,
-  useLocation,
-  Router as WouterRouter,
-} from 'wouter';
+import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
+const STORE_KEY = 'dr-hala-sanctuary-v1';
 
 function damascusDateParts(date: Date) {
   const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Damascus',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    hourCycle: 'h23',
+    timeZone: 'Asia/Damascus', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', hourCycle: 'h23',
   }).formatToParts(date);
   const part = (type: string) => parts.find(value => value.type === type)?.value ?? '';
-  return {
-    year: part('year'),
-    month: part('month'),
-    day: part('day'),
-    hour: Number(part('hour')),
-  };
+  return { year: part('year'), month: part('month'), day: part('day'), hour: Number(part('hour')) };
 }
 
 function makeDateKey(year: string, month: string, day: string) {
@@ -51,55 +37,82 @@ function addDaysToDateKey(dateKey: string, days: number) {
   );
 }
 
+type Task = { id: string; title: string; priority: 'high' | 'medium' | 'low'; completed: boolean };
+type Habit = { id: string; name: string; completedDate: string | null };
+type Exam = { id: string; name: string; date: string };
+type Session = { id: string; subject: string; duration: number; completed: boolean; date: string };
+type Message = { id: string; text: string };
+type Store = {
+  tasks: Task[];
+  habits: Habit[];
+  exams: Exam[];
+  sessions: Session[];
+  messages: Message[];
+  language: 'ar' | 'en';
+  timerMode: 'focus' | 'short' | 'long';
+  remaining: number;
+};
+
+const quotes = [
+  'You can do it.',
+  'I believe in you.',
+  'I’m so proud of you.',
+  'Remember, you’re doing this so you can travel.',
+  'I’m always here with you and supporting you.',
+  'One little page at a time, sweetheart.',
+  'You make me proud just by showing up.',
+  'Take a breath, love. You have got this.',
+];
+
 function Home() {
-  type Task = { id: string; title: string; priority: 'high' | 'medium' | 'low'; completed: boolean };
-  type Habit = { id: string; name: string; completedDate: string | null };
-  type Exam = { id: string; name: string; date: string };
-  type Session = { id: string; subject: string; duration: number; completed: boolean; date: string };
-  type Message = { id: string; text: string };
-  type Store = { tasks: Task[]; habits: Habit[]; exams: Exam[]; sessions: Session[]; messages: Message[]; language: 'ar' | 'en'; timerMode: 'focus' | 'short' | 'long'; remaining: number };
-  const key = 'dr-hala-sanctuary-v1';
   const initialDate = damascusDateParts(new Date());
   const initialToday = makeDateKey(initialDate.year, initialDate.month, initialDate.day);
   const seed: Store = {
     tasks: [
-      { id: 't1', title: 'مراجعة محاضرة علم الأدوية', priority: 'high', completed: false },
-      { id: 't2', title: 'حل أسئلة الفصل الثالث', priority: 'medium', completed: false },
-      { id: 't3', title: 'ترتيب ملخصات الأسبوع', priority: 'low', completed: true },
+      { id: 't1', title: 'Review pharmacology lecture', priority: 'high', completed: false },
+      { id: 't2', title: 'Work through chapter three questions', priority: 'medium', completed: false },
+      { id: 't3', title: 'Organize this week’s notes', priority: 'low', completed: true },
     ],
     habits: [
-      { id: 'h1', name: 'قراءة عشر صفحات', completedDate: null },
-      { id: 'h2', name: 'شرب الماء بانتظام', completedDate: null },
-      { id: 'h3', name: 'استراحة قصيرة بين الجلسات', completedDate: null },
+      { id: 'h1', name: 'Read ten pages', completedDate: null },
+      { id: 'h2', name: 'Drink water regularly', completedDate: null },
+      { id: 'h3', name: 'Take a short break between sessions', completedDate: null },
     ],
-    exams: [{ id: 'e1', name: 'اختبار علم الأدوية', date: addDaysToDateKey(initialToday, 12) }],
-    sessions: [{ id: 's1', subject: 'علم التشريح', duration: 45, completed: true, date: initialToday }],
-    messages: [], language: 'ar', timerMode: 'focus', remaining: 25 * 60,
+    exams: [{ id: 'e1', name: 'Pharmacology exam', date: addDaysToDateKey(initialToday, 12) }],
+    sessions: [{ id: 's1', subject: 'Anatomy', duration: 45, completed: true, date: initialToday }],
+    messages: [],
+    language: 'en',
+    timerMode: 'focus',
+    remaining: 25 * 60,
   };
+
   const loadStore = (): Store => {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = localStorage.getItem(STORE_KEY);
       if (!raw) return seed;
       const parsed = JSON.parse(raw) as Partial<Store>;
+      const sessions = Array.isArray(parsed.sessions) ? parsed.sessions.map(session =>
+        session.id === 's1' && session.subject === 'علم التشريح'
+          ? { ...session, date: initialToday }
+          : session,
+      ) : seed.sessions;
       return {
-        ...seed, ...parsed,
+        ...seed,
+        ...parsed,
         tasks: Array.isArray(parsed.tasks) ? parsed.tasks : seed.tasks,
         habits: Array.isArray(parsed.habits) ? parsed.habits : seed.habits,
         exams: Array.isArray(parsed.exams) ? parsed.exams : seed.exams,
-        sessions: Array.isArray(parsed.sessions)
-          ? parsed.sessions.map(session =>
-              session.id === 's1' && session.subject === 'علم التشريح'
-                ? { ...session, date: initialToday }
-                : session,
-            )
-          : seed.sessions,
+        sessions,
         messages: Array.isArray(parsed.messages) ? parsed.messages : seed.messages,
-        language: parsed.language === 'en' ? 'en' : 'ar',
+        language: 'en',
         timerMode: ['focus', 'short', 'long'].includes(parsed.timerMode || '') ? parsed.timerMode as Store['timerMode'] : 'focus',
-        remaining: Number.isFinite(parsed.remaining) ? Math.max(0, Number(parsed.remaining)) : 1500,
+        remaining: Number.isFinite(parsed.remaining) ? Math.max(0, Number(parsed.remaining)) : 25 * 60,
       };
-    } catch { return seed; }
+    } catch {
+      return seed;
+    }
   };
+
   const [store, setStore] = useState<Store>(loadStore);
   const [clock, setClock] = useState(new Date());
   const dateParts = damascusDateParts(clock);
@@ -112,167 +125,163 @@ function Home() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
   const [studySubject, setStudySubject] = useState('');
-  const [navOpen, setNavOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('section-home');
   const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState<{ kind: 'task' | 'habit' | 'exam'; id?: string } | null>(null);
   const [fields, setFields] = useState({ title: '', date: '', priority: 'medium' as Task['priority'] });
   const [letterEditor, setLetterEditor] = useState(false);
   const [letterDraft, setLetterDraft] = useState('');
   const [editingMessage, setEditingMessage] = useState<string | null>(null);
-  const en = store.language === 'en';
-  const tr = (ar: string, english: string) => en ? english : ar;
-  const t = {
-    hello: tr('أهلًا يا هالة', 'Hello, Hala'), home: tr('الرئيسية', 'Home'), tasks: tr('مهامي', 'My tasks'),
-    habits: tr('عاداتي', 'My habits'), study: tr('دراستي', 'My studies'), exams: tr('الامتحانات', 'Exams'),
-    stats: tr('الإحصائيات', 'Insights'), settings: tr('الإعدادات', 'Settings'), today: tr('مساحة هادئة ليومك', 'A gentle space for your day'),
-    next: tr('رسالة أخرى', 'Another note'), todayFocus: tr('خطوة صغيرة اليوم، تصنع فرقًا كبيرًا غدًا.', 'One small step today can make a meaningful difference tomorrow.'),
-    tasksTitle: tr('ما أود إنجازه', 'What I’d like to do'), habitsTitle: tr('عاداتي اللطيفة', 'Gentle rituals'),
-    examsTitle: tr('موعد يقترب', 'Coming up'), studyTitle: tr('مساحة الدراسة', 'Study nook'), timerTitle: tr('وقت التركيز', 'Focus time'),
-     letterTitle: tr('رسالة من شخص يحبك', 'A letter from someone who loves you'), calendarTitle: tr('تقويمك', 'Your calendar'), addTask: tr('مهمة جديدة', 'Add a task'),
-    addHabit: tr('عادة جديدة', 'Add a ritual'), addExam: tr('إضافة اختبار', 'Add an exam'), noTasks: tr('لا شيء يثقل يومك الآن. ابدئي بما يهمك.', 'Nothing weighing on your day. Begin with what matters.'),
-    noHabits: tr('أضيفي عادة صغيرة تحبين أن ترافق يومك.', 'Add a small ritual you’d like to carry through your day.'),
-    noExam: tr('لا توجد اختبارات قريبة. خذي نفسًا مطمئنًا.', 'No upcoming exams. Take a reassuring breath.'),
-    completed: tr('مكتمل', 'complete'), progress: tr('تقدم اليوم', 'Today’s progress'), priority: tr('الأولوية', 'Priority'),
-    low: tr('هادئة', 'Gentle'), medium: tr('عادية', 'Normal'), high: tr('مهمة', 'Important'), date: tr('التاريخ', 'Date'),
-    subject: tr('المادة', 'Subject'), duration: tr('المدة بالدقائق', 'Minutes'), startStudy: tr('ابدئي جلسة دراسة', 'Start a study session'),
-    sessionStarted: tr('بدأت جلستك، أنتِ في الطريق.', 'Your session has begun. You’re on your way.'), focus: tr('تركيز', 'Focus'),
-    shortBreak: tr('استراحة قصيرة', 'Short break'), longBreak: tr('استراحة طويلة', 'Long break'),
-    start: tr('ابدئي', 'Start'), pause: tr('إيقاف مؤقت', 'Pause'), reset: tr('إعادة', 'Reset'),
-    todayStats: tr('أثر يومك حتى الآن', 'Your day, so far'), doneTasks: tr('مهام أُنجزت', 'Tasks done'),
-    studyHours: tr('ساعات دراسة', 'Study hours'), habitsDone: tr('عادات اكتملت', 'Rituals kept'),
-    save: tr('حفظ', 'Save'), cancel: tr('إلغاء', 'Cancel'), title: tr('العنوان', 'Title'), name: tr('الاسم', 'Name'),
-    delete: tr('حذف', 'Delete'), edit: tr('تعديل', 'Edit'), dayQuote: tr('هذا اليوم لكِ، خذيه على مهل.', 'This day is yours; take it gently.'),
-    completedAll: tr('أحسنتِ يا هالة، لقد اعتنيتِ بنفسك اليوم.', 'Beautifully done, Hala. You showed up for yourself today.'),
-    noLetter: tr('مساحتكِ هنا تذكّرك دائمًا: أنتِ محبوبة، وقادرة، ويُحتفى بكِ.', 'Let this space remind you: you are loved, capable, and deeply appreciated.'),
-    letterPlaceholder: tr('اكتبي كلماتكِ الحنونة هنا…', 'Write your kind words here…'), addNote: tr('أضيفي رسالتك', 'Add your note'),
-    overallProgress: tr('تقدمكِ اليوم', 'Your progress today'),
-    timerDone: tr('أحسنتِ، لقد منحتِ حلمكِ وقتًا ثمينًا.', 'Beautifully done. You gave your dream some precious time.'),
-    sessionInProgress: tr('جلستكِ جارية الآن', 'Session in progress'),
-    sessionsToday: tr('جلسات اليوم', 'sessions today'),
-  };
-  const encouragement = en
-    ? ['You do not need to do it all at once. Begin where you are.', 'Your steady effort is worth celebrating, even on quiet days.', 'You are more capable than the doubt that visits you.']
-    : ['لا تحتاجين إلى إنجاز كل شيء دفعة واحدة. ابدئي من حيث أنتِ.', 'اجتهادكِ الهادئ يستحق الاحتفاء، حتى في الأيام العادية.', 'أنتِ أقدر من أي شكّ يزوركِ.'];
-  const builtInLetters = en
-    ? ['You are allowed to learn at your own pace. Every page you turn is proof of your courage.', 'Your presence makes the world softer. I hope you remember how much you are loved.', 'You have already made it through so many hard days. I believe in the person you are becoming.']
-    : ['من حقكِ أن تتعلمي على مهل. كل صفحة تقرئينها دليل على شجاعتكِ.', 'وجودكِ يجعل العالم ألطف. أتمنى أن تتذكري كم أنتِ محبوبة.', 'عبرتِ أيامًا صعبة كثيرة، وأنا أؤمن بالشخص الذي تصبحين عليه.'];
-  const saveStore = (next: Store | ((s: Store) => Store)) => setStore(previous => {
-    const value = typeof next === 'function' ? next(previous) : next;
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Storage may be unavailable; the session remains usable. */ }
+
+  const saveStore = (next: Store | ((current: Store) => Store)) => setStore(current => {
+    const value = typeof next === 'function' ? next(current) : next;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(value)); } catch { /* Keep this session usable if storage is unavailable. */ }
     return value;
   });
+
+  useEffect(() => {
+    document.documentElement.lang = 'en';
+    document.documentElement.dir = 'ltr';
+  }, []);
   useEffect(() => {
     const id = window.setInterval(() => setClock(new Date()), 1000);
     return () => window.clearInterval(id);
   }, []);
   useEffect(() => {
-    try { localStorage.setItem(key, JSON.stringify(store)); } catch { /* Keep the current in-memory session. */ }
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch { /* Keep the current in-memory session. */ }
   }, [store]);
-  useEffect(() => {
-    document.documentElement.lang = store.language;
-    document.documentElement.dir = store.language === 'en' ? 'ltr' : 'rtl';
-  }, [store.language]);
   useEffect(() => {
     if (!timerRunning) return;
     const id = window.setInterval(() => {
-      setStore(previous => {
-        const remaining = Math.max(0, previous.remaining - 1);
-        return { ...previous, remaining };
-      });
+      setStore(previous => ({ ...previous, remaining: Math.max(0, previous.remaining - 1) }));
     }, 1000);
     return () => window.clearInterval(id);
   }, [timerRunning]);
-  useEffect(() => {
-    if (!timerRunning || store.remaining > 0) return;
-    setTimerRunning(false);
-    if (sessionActive) {
-      const subject = studySubject.trim() || (en ? 'Study session' : 'جلسة دراسة');
-      saveStore(s => ({
-        ...s,
-        sessions: [...s.sessions, {
-          id: `s-${Date.now()}`,
-          subject,
-          duration: 25,
-          completed: true,
-          date: today,
-        }],
-      }));
-      setSessionActive(false);
-    }
-    setNotice(t.timerDone);
-    const timeout = window.setTimeout(() => setNotice(''), 3200);
-    return () => window.clearTimeout(timeout);
-  }, [timerRunning, store.remaining, sessionActive, studySubject, en, today, t.timerDone]);
-  const dateLabel = clock.toLocaleDateString(en ? 'en-US' : 'ar', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Damascus',
-  });
-  const greeting = dateParts.hour < 12 ? tr('صباح الخير', 'Good morning') : tr('مساء الخير', 'Good evening');
-  const doneTasksCount = store.tasks.filter(x => x.completed).length;
-  const todayHabits = store.habits.filter(x => x.completedDate === today).length;
-  const todaySessions = store.sessions.filter(x => x.date === today && x.completed);
+
+  const t = {
+    tasksTitle: 'Your little to-do list',
+    habitsTitle: 'Sweet little rituals',
+    examsTitle: 'Coming up',
+    studyTitle: 'Study corner',
+    timerTitle: 'A little focus time',
+    letterTitle: 'A note from your person',
+    calendarTitle: 'Your calendar',
+    addTask: 'Add a task',
+    addHabit: 'Add a habit',
+    addExam: 'Add an exam',
+    noTasks: 'Nothing on the list just yet. What would feel good to finish?',
+    noHabits: 'Add a small habit you would love to keep.',
+    noExam: 'No exams coming up. Enjoy this little breathing room.',
+    completed: 'complete',
+    priority: 'Priority',
+    low: 'Gentle',
+    medium: 'Normal',
+    high: 'Important',
+    date: 'Date',
+    subject: 'What are you studying?',
+    startStudy: 'Start a study session',
+    sessionStarted: 'Your study session has started. I’m cheering you on.',
+    focus: 'Focus',
+    shortBreak: 'Short break',
+    longBreak: 'Long break',
+    start: 'Start',
+    pause: 'Pause',
+    reset: 'Reset timer',
+    todayStats: 'Look what you did today',
+    doneTasks: 'Tasks done',
+    studyHours: 'Study hours',
+    habitsDone: 'Habits kept',
+    save: 'Save',
+    cancel: 'Cancel',
+    title: 'Task title',
+    name: 'Name',
+    delete: 'Delete',
+    edit: 'Edit',
+    progress: 'Today’s progress',
+    timerDone: 'You did it, love. You gave your dream some time.',
+    sessionInProgress: 'Session in progress',
+    sessionsToday: 'sessions today',
+  };
+
+  const doneTasksCount = store.tasks.filter(task => task.completed).length;
+  const todayHabits = store.habits.filter(habit => habit.completedDate === today).length;
+  const todaySessions = store.sessions.filter(session => session.date === today && session.completed);
   const studyTotal = todaySessions.reduce((sum, session) => sum + session.duration, 0);
   const taskProgress = store.tasks.length ? Math.round(doneTasksCount / store.tasks.length * 100) : 0;
   const habitProgress = store.habits.length ? Math.round(todayHabits / store.habits.length * 100) : 0;
   const studyProgress = Math.min(100, Math.round(studyTotal / 120 * 100));
   const overallProgress = Math.round((taskProgress + habitProgress + studyProgress) / 3);
-  const nextExam = store.exams.filter(x => x.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const nextExam = store.exams.filter(exam => exam.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
   const [secondsUntil, setSecondsUntil] = useState(0);
+
   useEffect(() => {
     const tick = () => setSecondsUntil(nextExam ? Math.max(0, Math.floor((new Date(`${nextExam.date}T23:59:59+03:00`).getTime() - Date.now()) / 1000) + 1) : 0);
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [nextExam?.id, nextExam?.date]);
+
   const timerDurations = { focus: 25 * 60, short: 5 * 60, long: 15 * 60 };
   const timerDuration = timerDurations[store.timerMode];
   const timerProgress = Math.min(1, Math.max(0, (timerDuration - store.remaining) / timerDuration));
   const timerTime = `${String(Math.floor(store.remaining / 60)).padStart(2, '0')}:${String(store.remaining % 60).padStart(2, '0')}`;
   const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const firstDay = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
-  const monthLabel = month.toLocaleDateString(en ? 'en-US' : 'ar', { month: 'long', year: 'numeric', timeZone: 'Asia/Damascus' });
-  const weekDays = en ? ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] : ['ح', 'ن', 'ث', 'ر', 'خ', 'ج', 'س'];
-  const localizedNumber = (value: number) => new Intl.NumberFormat(en ? 'en' : 'ar').format(value);
-  const shortDate = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString(en ? 'en-US' : 'ar', { month: 'short', day: 'numeric', timeZone: 'Asia/Damascus' });
-  const taskText = (task: Task) => en ? ({
-    t1: ['مراجعة محاضرة علم الأدوية', 'Review pharmacology lecture'],
-    t2: ['حل أسئلة الفصل الثالث', 'Work through chapter three questions'],
-    t3: ['ترتيب ملخصات الأسبوع', 'Organize this week’s notes'],
-  } as Record<string, string[]>)[task.id]?.[1] || task.title : task.title;
-  const habitText = (habit: Habit) => en ? ({
-    h1: ['قراءة عشر صفحات', 'Read ten pages'],
-    h2: ['شرب الماء بانتظام', 'Drink water regularly'],
-    h3: ['استراحة قصيرة بين الجلسات', 'Take a short break between sessions'],
-  } as Record<string, string[]>)[habit.id]?.[1] || habit.name : habit.name;
-  const examText = (exam: Exam) => en && exam.id === 'e1' && exam.name === 'اختبار علم الأدوية' ? 'Pharmacology exam' : exam.name;
+  const monthLabel = month.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'Asia/Damascus' });
+  const weekDays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
+  const dateLabel = clock.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Damascus' });
+  const shortDate = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'Asia/Damascus' });
+
+  const taskText = (task: Task) => ({
+    'مراجعة محاضرة علم الأدوية': 'Review pharmacology lecture',
+    'حل أسئلة الفصل الثالث': 'Work through chapter three questions',
+    'ترتيب ملخصات الأسبوع': 'Organize this week’s notes',
+  } as Record<string, string>)[task.title] || task.title;
+  const habitText = (habit: Habit) => ({
+    'قراءة عشر صفحات': 'Read ten pages',
+    'شرب الماء بانتظام': 'Drink water regularly',
+    'استراحة قصيرة بين الجلسات': 'Take a short break between sessions',
+  } as Record<string, string>)[habit.name] || habit.name;
+  const examText = (exam: Exam) => exam.id === 'e1' && exam.name === 'اختبار علم الأدوية' ? 'Pharmacology exam' : exam.name;
+  const sessionSubjectText = (subject: string) => subject === 'علم التشريح' ? 'Anatomy' : subject;
+  const builtInLetters = [
+    'You are allowed to learn at your own pace. Every page you turn is proof of your courage.',
+    'Your presence makes the world softer. I hope you remember how much you are loved.',
+    'You have already made it through so many hard days. I believe in the person you are becoming.',
+  ];
   const dailyMessages = [...builtInLetters, ...store.messages.map(message => message.text)];
   const dailyLetter = dailyMessages[(Number(dateParts.day) - 1) % dailyMessages.length];
-  const toggleTask = (id: string) => saveStore(s => ({ ...s, tasks: s.tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t) }));
-  const toggleHabit = (id: string) => saveStore(s => ({ ...s, habits: s.habits.map(h => h.id === id ? { ...h, completedDate: h.completedDate === today ? null : today } : h) }));
+
+  const toggleTask = (id: string) => saveStore(current => ({ ...current, tasks: current.tasks.map(task => task.id === id ? { ...task, completed: !task.completed } : task) }));
+  const toggleHabit = (id: string) => saveStore(current => ({ ...current, habits: current.habits.map(habit => habit.id === id ? { ...habit, completedDate: habit.completedDate === today ? null : today } : habit) }));
   const openEditor = (kind: 'task' | 'habit' | 'exam', id?: string) => {
-    const item = kind === 'task' ? store.tasks.find(x => x.id === id) : kind === 'habit' ? store.habits.find(x => x.id === id) : store.exams.find(x => x.id === id);
-    setFields({ title: kind === 'task' ? (item as Task | undefined)?.title || '' : kind === 'habit' ? (item as Habit | undefined)?.name || '' : (item as Exam | undefined)?.name || '', date: kind === 'exam' ? (item as Exam | undefined)?.date || '' : '', priority: (item as Task | undefined)?.priority || 'medium' });
+    const item = kind === 'task' ? store.tasks.find(value => value.id === id) : kind === 'habit' ? store.habits.find(value => value.id === id) : store.exams.find(value => value.id === id);
+    setFields({
+      title: kind === 'task' ? (item as Task | undefined)?.title || '' : kind === 'habit' ? (item as Habit | undefined)?.name || '' : (item as Exam | undefined)?.name || '',
+      date: kind === 'exam' ? (item as Exam | undefined)?.date || '' : '',
+      priority: (item as Task | undefined)?.priority || 'medium',
+    });
     setEditor({ kind, id });
   };
   const submitEditor = (event: FormEvent) => {
     event.preventDefault();
     const name = fields.title.trim();
-    if (!name) return;
-    const id = editor?.id || `${editor?.kind}-${Date.now()}`;
-    saveStore(s => {
-      if (editor?.kind === 'task') return { ...s, tasks: editor.id ? s.tasks.map(x => x.id === id ? { ...x, title: name, priority: fields.priority } : x) : [...s.tasks, { id, title: name, priority: fields.priority, completed: false }] };
-      if (editor?.kind === 'habit') return { ...s, habits: editor.id ? s.habits.map(x => x.id === id ? { ...x, name } : x) : [...s.habits, { id, name, completedDate: null }] };
-      return { ...s, exams: editor?.id ? s.exams.map(x => x.id === id ? { ...x, name, date: fields.date } : x) : [...s.exams, { id, name, date: fields.date }] };
+    if (!name || !editor) return;
+    const id = editor.id || `${editor.kind}-${Date.now()}`;
+    saveStore(current => {
+      if (editor.kind === 'task') return { ...current, tasks: editor.id ? current.tasks.map(task => task.id === id ? { ...task, title: name, priority: fields.priority } : task) : [...current.tasks, { id, title: name, priority: fields.priority, completed: false }] };
+      if (editor.kind === 'habit') return { ...current, habits: editor.id ? current.habits.map(habit => habit.id === id ? { ...habit, name } : habit) : [...current.habits, { id, name, completedDate: null }] };
+      return { ...current, exams: editor.id ? current.exams.map(exam => exam.id === id ? { ...exam, name, date: fields.date } : exam) : [...current.exams, { id, name, date: fields.date }] };
     });
     setEditor(null);
   };
-  const removeTask = (id: string) => saveStore(s => ({ ...s, tasks: s.tasks.filter(x => x.id !== id) }));
-  const removeHabit = (id: string) => saveStore(s => ({ ...s, habits: s.habits.filter(x => x.id !== id) }));
-  const removeExam = (id: string) => saveStore(s => ({ ...s, exams: s.exams.filter(x => x.id !== id) }));
+  const removeTask = (id: string) => saveStore(current => ({ ...current, tasks: current.tasks.filter(task => task.id !== id) }));
+  const removeHabit = (id: string) => saveStore(current => ({ ...current, habits: current.habits.filter(habit => habit.id !== id) }));
+  const removeExam = (id: string) => saveStore(current => ({ ...current, exams: current.exams.filter(exam => exam.id !== id) }));
   const startSession = () => {
-    setStudySubject(subject => subject.trim() || (en ? 'Pharmacology' : 'علم الأدوية'));
+    setStudySubject(subject => subject.trim() || 'Pharmacology');
     setSessionActive(true);
-    saveStore(s => ({ ...s, timerMode: 'focus', remaining: 25 * 60 }));
+    saveStore(current => ({ ...current, timerMode: 'focus', remaining: 25 * 60 }));
     setTimerRunning(true);
     setNotice(t.sessionStarted);
     window.setTimeout(() => setNotice(''), 2800);
@@ -281,176 +290,201 @@ function Home() {
     event.preventDefault();
     const text = letterDraft.trim();
     if (!text) return;
-    saveStore(s => ({ ...s, messages: editingMessage ? s.messages.map(m => m.id === editingMessage ? { ...m, text } : m) : [...s.messages, { id: `m-${Date.now()}`, text }] }));
-    setLetterEditor(false); setEditingMessage(null); setLetterDraft('');
+    saveStore(current => ({
+      ...current,
+      messages: editingMessage
+        ? current.messages.map(message => message.id === editingMessage ? { ...message, text } : message)
+        : [...current.messages, { id: `m-${Date.now()}`, text }],
+    }));
+    setLetterEditor(false);
+    setEditingMessage(null);
+    setLetterDraft('');
   };
-  const navItems = [
-    { label: t.home, icon: Flower2, target: 'section-home' },
-    { label: t.tasks, icon: ListChecks, target: 'section-tasks' },
-    { label: t.habits, icon: Sprout, target: 'section-habits' },
-    { label: t.study, icon: BookOpen, target: 'section-study' },
-    { label: t.exams, icon: CalendarDays, target: 'section-exams' },
-    { label: t.stats, icon: BarChart3, target: 'section-statistics' },
-    { label: t.settings, icon: Target, target: 'section-settings' },
-  ];
-  const toggleLanguage = () => saveStore(s => ({ ...s, language: s.language === 'ar' ? 'en' : 'ar' }));
+  const finishTimer = () => {
+    setTimerRunning(false);
+    if (sessionActive) {
+      const subject = studySubject.trim() || 'Study session';
+      saveStore(current => ({
+        ...current,
+        sessions: [...current.sessions, { id: `s-${Date.now()}`, subject, duration: 25, completed: true, date: today }],
+      }));
+      setSessionActive(false);
+    }
+    setNotice(t.timerDone);
+    window.setTimeout(() => setNotice(''), 3200);
+  };
+
+  useEffect(() => {
+    if (timerRunning && store.remaining === 0) finishTimer();
+  }, [timerRunning, store.remaining]);
+
   const setMode = (mode: Store['timerMode']) => {
     setTimerRunning(false);
     setSessionActive(false);
-    saveStore(s => ({ ...s, timerMode: mode, remaining: timerDurations[mode] }));
+    saveStore(current => ({ ...current, timerMode: mode, remaining: timerDurations[mode] }));
   };
-  const direction = en ? 'ltr' : 'rtl';
+  const panel = 'soft-card rounded-[25px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6';
+
   return (
-    <div dir={direction} className={`min-h-[100dvh] text-[hsl(var(--foreground))] ${en ? '' : 'font-arabic'}`} data-testid="page-home">
-      <div className="mx-auto flex min-h-[100dvh] max-w-[1560px]">
-        <aside className={`fixed inset-y-0 z-30 w-[248px] border-[hsl(var(--border))] bg-[hsl(var(--sidebar))]/90 px-5 py-7 backdrop-blur-xl transition-transform duration-300 md:static md:translate-x-0 ${navOpen ? 'translate-x-0' : en ? '-translate-x-full md:translate-x-0' : 'translate-x-full md:translate-x-0'} ${en ? 'left-0 border-r' : 'right-0 border-l'}`}>
-          <div className="mb-10 flex items-center gap-3 px-2">
-            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"><Flower2 size={23}/></div>
-            <div><div className="serif-display text-[24px] leading-none">{en ? 'Dr. Hala' : 'د. هالة'}</div><div className="mt-1 text-[11px] tracking-[.16em] text-[hsl(var(--muted-foreground))]">{en ? 'YOUR QUIET CORNER' : 'مساحتكِ الهادئة'}</div></div>
+    <main dir="ltr" className="min-h-[100dvh] text-[hsl(var(--foreground))]" data-testid="page-home">
+      <div className="mx-auto max-w-[1120px] px-4 pb-10 pt-5 sm:px-7 sm:pt-8">
+        <header className="mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 overflow-hidden rounded-[19px] border-2 border-white bg-[hsl(var(--secondary))] shadow-sm sm:h-[66px] sm:w-[66px]">
+              <img src="/zeze-cat-source.png" alt="Orange kitten wearing baby-blue headphones" className="h-full w-full object-cover" />
+            </div>
+            <div>
+              <p className="serif-display text-[26px] leading-none tracking-tight sm:text-[31px]">zeze time</p>
+              <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">your little study nook</p>
+            </div>
           </div>
-          <div className="mb-3 px-3 text-[10px] font-semibold tracking-[.18em] text-[hsl(var(--muted-foreground))]">{en ? 'YOUR SPACE' : 'مساحتكِ'}</div>
-          <nav aria-label={en ? 'Main navigation' : 'التنقل الرئيسي'} className="space-y-1">
-            {navItems.map(({label, icon: Icon, target}, index) => <button key={target} onClick={() => {
-              setNavOpen(false);
-              setActiveSection(target);
-              document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }} data-testid={`nav-${index}`} aria-current={activeSection === target ? 'location' : undefined} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-start text-[14px] transition-colors ${activeSection === target ? 'bg-[hsl(var(--primary))]/10 font-semibold text-[hsl(var(--primary))]' : 'text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--card))] hover:text-[hsl(var(--foreground))]'}`}><Icon size={18} strokeWidth={1.7}/><span className="flex-1">{label}</span>{activeSection === target && <span className="h-1.5 w-1.5 rounded-full bg-[hsl(var(--primary))]"/>}</button>)}
-          </nav>
-          <div className="absolute bottom-6 inset-x-5 rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))]/70 p-4">
-            <div className="mb-2 flex items-center gap-2 text-[hsl(var(--primary))]"><Heart size={15}/><span className="text-xs font-semibold">{en ? 'A gentle reminder' : 'تذكير حنون'}</span></div>
-            <p className="text-xs leading-6 text-[hsl(var(--muted-foreground))]">{en ? 'You deserve rest as much as you deserve to reach your dreams.' : 'تستحقين الراحة بقدر ما تستحقين الوصول إلى أحلامكِ.'}</p>
+          <div className="hidden rounded-2xl border border-[hsl(var(--border))] bg-white/75 px-4 py-2.5 text-right sm:block">
+            <p className="text-[11px] text-[hsl(var(--muted-foreground))]" data-testid="text-current-date">{dateLabel}</p>
+            <p className="mt-0.5 text-xs font-bold">{dateParts.hour < 12 ? 'Good morning, lovely' : 'Good evening, lovely'}</p>
           </div>
-        </aside>
-        {navOpen && <button aria-label={en ? 'Close navigation' : 'إغلاق التنقل'} className="fixed inset-0 z-20 bg-[#3d2632]/20 md:hidden" onClick={() => setNavOpen(false)} data-testid="button-close-navigation"/>}
-        <main className="min-w-0 flex-1 px-4 pb-12 pt-5 sm:px-7 lg:px-10 lg:pt-8">
-          <header className="mb-8 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <button aria-label={en ? 'Open navigation' : 'فتح التنقل'} onClick={() => setNavOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] md:hidden" data-testid="button-open-navigation"><Menu size={19}/></button>
-              <div className="hidden h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--card))] text-[hsl(var(--primary))] sm:grid"><Sun size={19} strokeWidth={1.7}/></div>
-              <div><p className="text-[11px] text-[hsl(var(--muted-foreground))]" data-testid="text-current-date">{dateLabel}</p><p className="text-sm font-semibold">{tr('كل شيء يبدأ بخطوة هادئة', 'Everything begins with a gentle step')}</p></div>
+        </header>
+
+        <section className="page-enter relative mb-6 overflow-hidden rounded-[30px] border border-pink-200/80 bg-[linear-gradient(118deg,#fff4f8_0%,#fffafd_48%,#edf8ff_100%)] px-5 py-7 shadow-[0_18px_50px_rgba(204,143,173,.13)] sm:px-9 sm:py-9" data-testid="section-encouragement">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-14 h-56 w-56 rounded-full border border-pink-200/70" />
+          <div aria-hidden="true" className="pointer-events-none absolute -right-1 top-0 h-40 w-40 rounded-full border border-sky-200/70" />
+          <div className="relative z-10 max-w-2xl">
+            <p className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-[hsl(var(--primary))]"><Heart size={14} /> a little love note for today</p>
+            <p className="serif-display min-h-[90px] max-w-xl text-[32px] leading-[1.18] text-[hsl(var(--foreground))] sm:min-h-[105px] sm:text-[44px]" data-testid="text-encouragement">“{quotes[quoteIndex]}”</p>
+            <div className="mt-5 flex items-center gap-3">
+              <button onClick={() => setQuoteIndex(index => (index + 1) % quotes.length)} className="flex items-center gap-2 rounded-full bg-[hsl(var(--primary))] px-4 py-2.5 text-xs font-extrabold text-white shadow-sm hover:opacity-90" aria-label="Show another love note" data-testid="button-next-encouragement">One more, please <ArrowRight size={15} /></button>
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">{quoteIndex + 1} of {quotes.length}</span>
             </div>
-            <button onClick={toggleLanguage} className="flex h-10 items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 text-xs font-semibold text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]" aria-label={en ? 'Switch to Arabic' : 'Switch to English'} data-testid="button-language"><Languages size={16}/><span>{en ? 'العربية' : 'English'}</span></button>
-          </header>
-          <section id="section-home" className="page-enter relative mb-6 scroll-mt-6 overflow-hidden rounded-[28px] border border-[hsl(var(--border))] bg-[linear-gradient(115deg,hsl(18_40%_92%)_0%,hsl(37_43%_96%)_54%,hsl(334_30%_93%)_100%)] px-6 py-7 sm:px-9 sm:py-9">
-            <div className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full border border-[hsl(var(--primary))]/10"/><div className="pointer-events-none absolute -right-1 top-2 h-36 w-36 rounded-full border border-[hsl(var(--primary))]/10"/>
-            <div className="relative z-10 max-w-3xl">
-              <p className="mb-2 text-sm text-[hsl(var(--primary))]" data-testid="text-greeting">{greeting} {en ? 'Hala' : 'يا حلا'}</p>
-              <h1 className="serif-display mb-2 text-[32px] leading-tight text-[hsl(var(--foreground))] sm:text-[42px]" data-testid="text-welcome">{en ? 'You are doing beautifully.' : 'أنتِ تبلي بلاءً جميلًا.'}</h1>
-              <p className="max-w-xl text-sm leading-7 text-[hsl(var(--muted-foreground))]">{en ? 'A little room to learn, breathe, and make today your own.' : 'مساحة صغيرة لتتعلمي، وتتنفسي، وتجعلين هذا اليوم يشبهكِ.'}</p>
+          </div>
+          <img src="/zeze-cat-source.png" alt="" aria-hidden="true" className="heart-float pointer-events-none absolute -bottom-9 -right-5 hidden w-[245px] rounded-[32px] opacity-95 mix-blend-multiply sm:block md:w-[285px]" />
+          <div className="pointer-events-none absolute bottom-5 right-[220px] hidden text-pink-300/70 sm:block"><Sparkles size={30} /></div>
+          <div className="mt-5 sm:hidden">
+            <img src="/zeze-cat-source.png" alt="Orange kitten wearing baby-blue headphones" className="mx-auto h-32 w-32 rounded-[28px] object-cover shadow-sm" />
+          </div>
+        </section>
+
+        <section className="mb-6 grid grid-cols-3 gap-3" aria-label="Today at a glance">
+          <div className="rounded-[21px] border border-pink-100 bg-white/90 px-3 py-4 text-center shadow-sm sm:px-5">
+            <span className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-xl bg-pink-50 text-[hsl(var(--primary))]"><CheckCircle2 size={16} /></span>
+            <strong className="block text-xl">{number(doneTasksCount)}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))] sm:text-xs">{t.doneTasks}</span>
+          </div>
+          <div className="rounded-[21px] border border-sky-100 bg-white/90 px-3 py-4 text-center shadow-sm sm:px-5">
+            <span className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-xl bg-sky-50 text-sky-600"><Clock3 size={16} /></span>
+            <strong className="block text-xl">{number(Number((studyTotal / 60).toFixed(1)))}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))] sm:text-xs">{t.studyHours}</span>
+          </div>
+          <div className="rounded-[21px] border border-blue-100 bg-white/90 px-3 py-4 text-center shadow-sm sm:px-5">
+            <span className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-xl bg-blue-50 text-blue-500"><Leaf size={16} /></span>
+            <strong className="block text-xl">{number(todayHabits)}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))] sm:text-xs">{t.habitsDone}</span>
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(330px,.85fr)]">
+          <section className={panel} data-testid="section-tasks">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div><div className="flex items-center gap-2"><ListChecks size={18} className="text-[hsl(var(--primary))]" /><h2 className="text-lg font-extrabold">{t.tasksTitle}</h2></div><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-task-progress">{number(doneTasksCount)} of {number(store.tasks.length)} {t.completed}</p></div>
+              <button onClick={() => openEditor('task')} className="flex items-center gap-1.5 rounded-xl bg-pink-50 px-3 py-2 text-xs font-bold text-[hsl(var(--primary))] hover:bg-pink-100" data-testid="button-add-task"><Plus size={15} />{t.addTask}</button>
             </div>
-            <div className="relative z-10 mt-6 flex max-w-3xl items-center justify-between gap-4 rounded-2xl border border-white/65 bg-white/45 px-4 py-3 backdrop-blur-sm sm:px-5">
-              <div className="flex items-start gap-3"><Sparkles className="mt-1 shrink-0 text-[hsl(var(--primary))]" size={17}/><p className="text-sm leading-6" data-testid="text-encouragement">{encouragement[quoteIndex]}</p></div>
-              <button onClick={() => setQuoteIndex(i => (i + 1) % encouragement.length)} aria-label={t.next} data-testid="button-next-encouragement" className="shrink-0 rounded-full p-2 text-[hsl(var(--primary))] hover:bg-white/70">{en ? <ArrowRight size={17}/> : <ArrowLeft size={17}/>}</button>
+            <div className="mb-4 h-2 overflow-hidden rounded-full bg-pink-50"><div className="h-full rounded-full bg-[hsl(var(--primary))] transition-all duration-500" style={{ width: `${taskProgress}%` }} data-testid="progress-tasks" /></div>
+            <div className="space-y-1">
+              {store.tasks.length ? store.tasks.map(task => <div key={task.id} className="group flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-pink-50/70" data-testid={`task-row-${task.id}`}>
+                <button aria-label={`${task.completed ? 'Uncomplete' : 'Complete'} ${taskText(task)}`} onClick={() => toggleTask(task.id)} className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${task.completed ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-white' : 'border-pink-300 text-transparent hover:border-[hsl(var(--primary))]'}`} data-testid={`button-complete-task-${task.id}`}><Check size={12} /></button>
+                <span className={`min-w-0 flex-1 truncate text-sm ${task.completed ? 'text-[hsl(var(--muted-foreground))] line-through' : ''}`} data-testid={`text-task-${task.id}`}>{taskText(task)}</span>
+                <span className={`hidden rounded-full px-2 py-1 text-[10px] sm:inline ${task.priority === 'high' ? 'bg-pink-100 text-pink-700' : task.priority === 'medium' ? 'bg-sky-50 text-sky-700' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`status-priority-${task.id}`}>{task.priority === 'high' ? t.high : task.priority === 'medium' ? t.medium : t.low}</span>
+                <button onClick={() => openEditor('task', task.id)} aria-label={`${t.edit}: ${taskText(task)}`} className="rounded-md p-1.5 text-[hsl(var(--muted-foreground))] opacity-70 hover:text-[hsl(var(--primary))] md:opacity-0 md:group-hover:opacity-100" data-testid={`button-edit-task-${task.id}`}><Pencil size={14} /></button>
+                <button onClick={() => removeTask(task.id)} aria-label={`${t.delete}: ${taskText(task)}`} className="rounded-md p-1.5 text-[hsl(var(--muted-foreground))] opacity-70 hover:text-[hsl(var(--destructive))] md:opacity-0 md:group-hover:opacity-100" data-testid={`button-delete-task-${task.id}`}><Trash2 size={14} /></button>
+              </div>) : <div className="rounded-xl bg-[hsl(var(--muted))]/65 px-4 py-7 text-center text-sm leading-7 text-[hsl(var(--muted-foreground))]" data-testid="empty-tasks">{t.noTasks}</div>}
             </div>
-            <div className="pointer-events-none absolute bottom-3 right-7 hidden text-[hsl(var(--primary))]/25 sm:block"><Sprout size={95} strokeWidth={.75}/></div>
           </section>
-          <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,.95fr)]">
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-tasks">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div><div className="flex items-center gap-2"><ListChecks size={18} className="text-[hsl(var(--primary))]"/><h2 className="text-lg font-semibold">{t.tasksTitle}</h2></div><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-task-progress">{localizedNumber(doneTasksCount)} {tr('من', 'of')} {localizedNumber(store.tasks.length)} {t.completed}</p></div>
-                <button onClick={() => openEditor('task')} className="flex items-center gap-1.5 rounded-xl bg-[hsl(var(--primary))]/10 px-3 py-2 text-xs font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/15" data-testid="button-add-task"><Plus size={15}/>{t.addTask}</button>
-              </div>
-              <div className="mb-5 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className="h-full rounded-full bg-[hsl(var(--primary))] transition-all duration-500" style={{width: `${taskProgress}%`}} data-testid="progress-tasks"/></div>
-              <div className="space-y-2">
-                {store.tasks.length ? store.tasks.map(task => <div key={task.id} className="group flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors hover:bg-[hsl(var(--muted))]/55" data-testid={`task-row-${task.id}`}>
-                  <button aria-label={`${task.completed ? tr('إلغاء إنجاز', 'Uncomplete') : tr('إنجاز', 'Complete')} ${task.title}`} onClick={() => toggleTask(task.id)} data-testid={`button-complete-task-${task.id}`} className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border ${task.completed ? 'border-[hsl(var(--chart-3))] bg-[hsl(var(--chart-3))] text-white' : 'border-[hsl(var(--input))] text-transparent hover:border-[hsl(var(--primary))]'}`}><Check size={12}/></button>
-                  <span className={`min-w-0 flex-1 truncate text-sm ${task.completed ? 'text-[hsl(var(--muted-foreground))] line-through' : ''}`} data-testid={`text-task-${task.id}`}>{taskText(task)}</span>
-                  <span className={`hidden rounded-full px-2 py-1 text-[10px] sm:inline ${task.priority === 'high' ? 'bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]' : task.priority === 'medium' ? 'bg-[hsl(var(--accent))]/40 text-[hsl(var(--foreground))]' : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'}`} data-testid={`status-priority-${task.id}`}>{task.priority === 'high' ? t.high : task.priority === 'medium' ? t.medium : t.low}</span>
-                  <button onClick={() => openEditor('task', task.id)} aria-label={`${t.edit}: ${task.title}`} className="rounded-md p-1.5 text-[hsl(var(--muted-foreground))] opacity-60 hover:text-[hsl(var(--primary))] md:opacity-0 md:group-hover:opacity-100" data-testid={`button-edit-task-${task.id}`}><Pencil size={14}/></button>
-                  <button onClick={() => removeTask(task.id)} aria-label={`${t.delete}: ${task.title}`} className="rounded-md p-1.5 text-[hsl(var(--muted-foreground))] opacity-60 hover:text-[hsl(var(--destructive))] md:opacity-0 md:group-hover:opacity-100" data-testid={`button-delete-task-${task.id}`}><Trash2 size={14}/></button>
-                </div>) : <div className="rounded-xl bg-[hsl(var(--muted))]/45 px-4 py-7 text-center text-sm leading-7 text-[hsl(var(--muted-foreground))]" data-testid="empty-tasks">{t.noTasks}</div>}
-              </div>
-            </section>
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-habits">
-              <div className="mb-4 flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Sprout size={18} className="text-[hsl(var(--chart-3))]"/><h2 className="text-lg font-semibold">{t.habitsTitle}</h2></div><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-habit-progress">{localizedNumber(todayHabits)} {tr('من', 'of')} {localizedNumber(store.habits.length)} {t.completed}</p></div><button onClick={() => openEditor('habit')} aria-label={t.addHabit} className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--chart-3))]/10 text-[hsl(var(--chart-3))] hover:bg-[hsl(var(--chart-3))]/20" data-testid="button-add-habit"><Plus size={17}/></button></div>
-              <div className="mb-4 flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className="h-full rounded-full bg-[hsl(var(--chart-3))] transition-all duration-500" style={{width: `${habitProgress}%`}} data-testid="progress-habits"/></div><span className="text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-habit-percent">{localizedNumber(habitProgress)}%</span></div>
-              <div className="space-y-1">
-                {store.habits.length ? store.habits.map(habit => <div className="group flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-[hsl(var(--muted))]/55" key={habit.id} data-testid={`habit-row-${habit.id}`}>
-                  <button onClick={() => toggleHabit(habit.id)} aria-label={`${habit.completedDate === today ? tr('إلغاء العادة', 'Undo ritual') : tr('إكمال العادة', 'Complete ritual')}: ${habit.name}`} className={`grid h-5 w-5 place-items-center rounded-full border ${habit.completedDate === today ? 'border-[hsl(var(--chart-3))] bg-[hsl(var(--chart-3))] text-white' : 'border-[hsl(var(--input))]'}`} data-testid={`button-complete-habit-${habit.id}`}>{habit.completedDate === today ? <Check size={12}/> : <Circle size={8}/>}</button>
-                  <span className={`flex-1 text-sm ${habit.completedDate === today ? 'text-[hsl(var(--muted-foreground))] line-through' : ''}`} data-testid={`text-habit-${habit.id}`}>{habitText(habit)}</span><button onClick={() => openEditor('habit', habit.id)} className="p-1 text-[hsl(var(--muted-foreground))] opacity-60 hover:text-[hsl(var(--primary))] md:opacity-0 md:group-hover:opacity-100" aria-label={`${t.edit}: ${habitText(habit)}`} data-testid={`button-edit-habit-${habit.id}`}><Pencil size={13}/></button><button onClick={() => removeHabit(habit.id)} className="p-1 text-[hsl(var(--muted-foreground))] opacity-60 hover:text-[hsl(var(--destructive))] md:opacity-0 md:group-hover:opacity-100" aria-label={`${t.delete}: ${habitText(habit)}`} data-testid={`button-delete-habit-${habit.id}`}><Trash2 size={13}/></button>
-                </div>) : <div className="rounded-xl bg-[hsl(var(--muted))]/45 px-4 py-6 text-center text-sm leading-7 text-[hsl(var(--muted-foreground))]" data-testid="empty-habits">{t.noHabits}</div>}
-              </div>
-              {store.habits.length > 0 && habitProgress === 100 && <p className="gentle-celebration mt-3 rounded-xl bg-[hsl(var(--chart-3))]/10 px-3 py-2 text-center text-xs text-[hsl(var(--chart-3))]" data-testid="status-habits-celebration">{t.completedAll}</p>}
-            </section>
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-exams">
-              <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2"><CalendarDays size={18} className="text-[hsl(var(--primary))]"/><h2 className="text-lg font-semibold">{t.examsTitle}</h2></div><button onClick={() => openEditor('exam')} className="grid h-9 w-9 place-items-center rounded-xl bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]" aria-label={t.addExam} data-testid="button-add-exam"><Plus size={17}/></button></div>
-              {nextExam ? <div className="rounded-2xl bg-[linear-gradient(130deg,hsl(340_28%_48%/0.10),hsl(40_42%_83%/0.3))] p-4" data-testid={`card-nearest-exam-${nextExam.id}`}><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold" data-testid={`text-exam-name-${nextExam.id}`}>{examText(nextExam)}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid={`text-exam-date-${nextExam.id}`}>{shortDate(nextExam.date)}</p></div><div className="flex gap-1"><button onClick={() => openEditor('exam', nextExam.id)} className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]" aria-label={t.edit} data-testid={`button-edit-exam-${nextExam.id}`}><Pencil size={14}/></button><button onClick={() => removeExam(nextExam.id)} className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))]" aria-label={t.delete} data-testid={`button-delete-exam-${nextExam.id}`}><Trash2 size={14}/></button></div></div><div className="mt-4 grid grid-cols-3 gap-2 text-center"><div className="rounded-xl bg-[hsl(var(--card))]/65 py-2"><strong className="block font-mono text-lg" data-testid="countdown-days">{localizedNumber(Math.floor(secondsUntil / 86400))}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))]">{tr('يوم', 'days')}</span></div><div className="rounded-xl bg-[hsl(var(--card))]/65 py-2"><strong className="block font-mono text-lg" data-testid="countdown-hours">{localizedNumber(Math.floor(secondsUntil % 86400 / 3600))}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))]">{tr('ساعة', 'hours')}</span></div><div className="rounded-xl bg-[hsl(var(--card))]/65 py-2"><strong className="block font-mono text-lg" data-testid="countdown-minutes">{localizedNumber(Math.floor(secondsUntil % 3600 / 60))}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))]">{tr('دقيقة', 'minutes')}</span></div></div></div> : <div className="rounded-xl bg-[hsl(var(--muted))]/45 px-3 py-7 text-center text-sm leading-7 text-[hsl(var(--muted-foreground))]" data-testid="empty-exams">{t.noExam}</div>}
-              {store.exams.filter(x => x.id !== nextExam?.id).map(exam => <div key={exam.id} className="mt-2 flex items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-[hsl(var(--muted))]/50" data-testid={`exam-row-${exam.id}`}><span>{examText(exam)}</span><span className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">{shortDate(exam.date)}<button onClick={() => openEditor('exam', exam.id)} aria-label={t.edit} data-testid={`button-edit-exam-${exam.id}`}><Pencil size={13}/></button><button onClick={() => removeExam(exam.id)} aria-label={t.delete} data-testid={`button-delete-exam-${exam.id}`}><Trash2 size={13}/></button></span></div>)}
-            </section>
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-study">
-              <div className="mb-4 flex items-center gap-2"><BookOpen size={18} className="text-[hsl(var(--chart-3))]"/><h2 className="text-lg font-semibold">{t.studyTitle}</h2></div>
-              <div className="flex items-center gap-4 rounded-2xl bg-[hsl(var(--chart-3))]/8 p-4"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--chart-3))]/12 text-[hsl(var(--chart-3))]"><BookOpen size={19}/></div><div className="min-w-0 flex-1"><p className="text-sm font-semibold" data-testid="text-study-subject">{sessionActive ? (studySubject || tr('جلسة دراسة', 'Study session')) : todaySessions.length ? (en && todaySessions[todaySessions.length - 1].subject === 'علم التشريح' ? 'Anatomy' : todaySessions[todaySessions.length - 1].subject) : tr('مساحة تنتظر فكرتك', 'A space waiting for your ideas')}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-study-today">{localizedNumber(todaySessions.length)} {t.sessionsToday} · {localizedNumber(studyTotal)} {tr('دقيقة اليوم', 'minutes today')}</p></div><div className="text-end"><span className="text-lg font-semibold" data-testid="text-study-progress">{localizedNumber(studyProgress)}%</span><span className="block text-[10px] text-[hsl(var(--muted-foreground))]">{tr('من هدفك', 'of your goal')}</span></div></div>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className="h-full rounded-full bg-[hsl(var(--chart-3))] transition-all duration-500" style={{width: `${studyProgress}%`}} data-testid="progress-study"/></div>
-              <label className="mt-4 block space-y-1.5 text-xs font-medium text-[hsl(var(--muted-foreground))]"><span>{t.subject}</span><input value={studySubject} onChange={e => setStudySubject(e.target.value)} placeholder={tr('مثال: علم التشريح', 'e.g. Anatomy')} className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]" data-testid="input-study-subject"/></label>
-              <button onClick={startSession} disabled={sessionActive} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[hsl(var(--chart-3))]/12 px-4 py-3 text-sm font-semibold text-[hsl(var(--chart-3))] hover:bg-[hsl(var(--chart-3))]/20 disabled:cursor-not-allowed disabled:opacity-70" data-testid="button-start-study"><Play size={15} fill="currentColor"/>{sessionActive ? t.sessionInProgress : t.startStudy}</button>
-              <p className="mt-2 text-center text-[10px] text-[hsl(var(--muted-foreground))]">{tr('كل جلسة تُحتسب ضمن إنجازك اليومي', 'Every session adds to your daily progress')}</p>
-            </section>
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-timer">
-              <div className="mb-4 flex items-center gap-2"><Clock3 size={18} className="text-[hsl(var(--primary))]"/><h2 className="text-lg font-semibold">{t.timerTitle}</h2></div>
-              <div className="mb-5 flex rounded-xl bg-[hsl(var(--muted))]/65 p-1">{(['focus','short','long'] as const).map(mode => <button key={mode} onClick={() => setMode(mode)} className={`flex-1 rounded-lg px-1 py-2 text-[11px] transition ${store.timerMode === mode ? 'bg-[hsl(var(--card))] font-semibold text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-timer-mode-${mode}`}>{mode === 'focus' ? t.focus : mode === 'short' ? t.shortBreak : t.longBreak}</button>)}</div>
-              <div className="flex flex-col items-center">
-                <div className="relative grid h-40 w-40 place-items-center">
-                  <svg className="-rotate-90" viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="69" fill="none" stroke="hsl(var(--muted))" strokeWidth="5"/><circle cx="80" cy="80" r="69" fill="none" stroke="hsl(var(--primary))" strokeWidth="5" strokeLinecap="round" strokeDasharray={433.54} strokeDashoffset={433.54 * (1 - timerProgress)} className="transition-[stroke-dashoffset] duration-1000"/></svg>
-                  <div className="absolute text-center"><strong className="font-mono text-[34px] font-medium tracking-tight" data-testid="text-timer-countdown">{timerTime}</strong><span className="mt-1 block text-[10px] text-[hsl(var(--muted-foreground))]">{store.timerMode === 'focus' ? t.focus : store.timerMode === 'short' ? t.shortBreak : t.longBreak}</span></div>
-                </div>
-                <div className="mt-2 flex items-center gap-3"><button onClick={() => setTimerRunning(r => !r)} className="flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-2.5 text-sm font-semibold text-[hsl(var(--primary-foreground))] hover:opacity-90" data-testid="button-timer-toggle">{timerRunning ? <><Pause size={15}/>{t.pause}</> : <><Play size={15} fill="currentColor"/>{t.start}</>}</button><button onClick={() => { setTimerRunning(false); setSessionActive(false); saveStore(s => ({ ...s, remaining: timerDuration })); }} aria-label={t.reset} className="grid h-10 w-10 place-items-center rounded-xl border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]" data-testid="button-timer-reset"><RotateCcw size={16}/></button></div>
-              </div>
-            </section>
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-statistics">
-              <div className="mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-[hsl(var(--chart-4))]"/><h2 className="text-lg font-semibold">{t.todayStats}</h2></div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-2xl bg-[hsl(var(--primary))]/8 px-2 py-4 text-center"><div className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-xl bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]"><CheckCircle2 size={16}/></div><strong className="block text-xl" data-testid="stat-tasks">{localizedNumber(doneTasksCount)}</strong><span className="mt-1 block text-[10px] leading-4 text-[hsl(var(--muted-foreground))]">{t.doneTasks}</span></div>
-                <div className="rounded-2xl bg-[hsl(var(--chart-3))]/8 px-2 py-4 text-center"><div className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-xl bg-[hsl(var(--chart-3))]/12 text-[hsl(var(--chart-3))]"><Clock3 size={16}/></div><strong className="block text-xl" data-testid="stat-study-hours">{localizedNumber(Number((studyTotal / 60).toFixed(1)))}</strong><span className="mt-1 block text-[10px] leading-4 text-[hsl(var(--muted-foreground))]">{t.studyHours}</span></div>
-                <div className="rounded-2xl bg-[hsl(var(--chart-4))]/15 px-2 py-4 text-center"><div className="mx-auto mb-2 grid h-8 w-8 place-items-center rounded-xl bg-[hsl(var(--chart-4))]/20 text-[hsl(var(--chart-4))]"><Leaf size={16}/></div><strong className="block text-xl" data-testid="stat-habits">{localizedNumber(todayHabits)}</strong><span className="mt-1 block text-[10px] leading-4 text-[hsl(var(--muted-foreground))]">{t.habitsDone}</span></div>
-              </div>
-              <div className="mt-4"><div className="mb-2 flex items-center justify-between text-xs"><span className="text-[hsl(var(--muted-foreground))]">{t.overallProgress}</span><strong data-testid="stat-overall-progress">{localizedNumber(overallProgress)}%</strong></div><div className="h-1.5 overflow-hidden rounded-full bg-[hsl(var(--muted))]"><div className="h-full rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),hsl(var(--chart-3)))] transition-all duration-500" style={{width: `${overallProgress}%`}} data-testid="progress-overall"/></div></div>
-            </section>
-            <section className="relative overflow-hidden rounded-[24px] border border-[hsl(var(--accent))]/55 bg-[linear-gradient(135deg,hsl(39_45%_92%),hsl(17_42%_94%))] p-5 sm:p-6" data-testid="section-love-letter">
-              <div className="heart-float pointer-events-none absolute -bottom-6 -left-4 text-[hsl(var(--primary))]/10"><Heart size={105} strokeWidth={.8}/></div>
-              <div className="relative"><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[hsl(var(--primary))]"><Heart size={17}/><h2 className="text-lg font-semibold">{t.letterTitle}</h2></div><button onClick={() => { setLetterDraft(''); setEditingMessage(null); setLetterEditor(true); }} className="rounded-lg p-2 text-[hsl(var(--primary))] hover:bg-white/60" aria-label={t.addNote} data-testid="button-add-love-note"><Plus size={16}/></button></div>
-                <p className="serif-display min-h-[74px] text-[18px] leading-8 text-[hsl(var(--foreground))]" data-testid="text-love-letter">{dailyLetter}</p>
-                {!store.messages.length && <p className="mt-1 text-xs leading-6 text-[hsl(var(--muted-foreground))]">{t.noLetter}</p>}
-                {store.messages.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{store.messages.map(message => <div key={message.id} className="flex items-center gap-1 rounded-full border border-[hsl(var(--primary))]/15 bg-white/45 px-2.5 py-1 text-[10px]"><span className="max-w-32 truncate">{message.text}</span><button onClick={() => { setLetterDraft(message.text); setEditingMessage(message.id); setLetterEditor(true); }} aria-label={t.edit} data-testid={`button-edit-message-${message.id}`}><Pencil size={11}/></button><button onClick={() => saveStore(s => ({ ...s, messages: s.messages.filter(x => x.id !== message.id) }))} aria-label={t.delete} data-testid={`button-delete-message-${message.id}`}><X size={12}/></button></div>)}</div>}
-              </div>
-            </section>
-            <section className="soft-card rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-calendar">
-              <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2"><CalendarDays size={18} className="text-[hsl(var(--primary))]"/><h2 className="text-lg font-semibold">{t.calendarTitle}</h2></div><div className="flex items-center gap-1"><button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label={en ? 'Previous month' : 'الشهر السابق'} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[hsl(var(--muted))]" data-testid="button-calendar-previous"><ChevronLeft size={17}/></button><span className="min-w-24 text-center text-xs font-semibold" data-testid="text-calendar-month">{monthLabel}</span><button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label={en ? 'Next month' : 'الشهر التالي'} className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[hsl(var(--muted))]" data-testid="button-calendar-next"><ChevronRight size={17}/></button></div></div>
-              <div className="grid grid-cols-7 gap-y-1 text-center">{weekDays.map((day, i) => <span className="py-2 text-[10px] font-medium text-[hsl(var(--muted-foreground))]" key={`${day}-${i}`}>{day}</span>)}{Array.from({length: firstDay}, (_, i) => <span key={`blank-${i}`} />)}{Array.from({length: daysInMonth}, (_, i) => { const d = i + 1; const isToday = d === Number(dateParts.day) && month.getMonth() === Number(dateParts.month) - 1 && month.getFullYear() === Number(dateParts.year); return <span key={d} className={`mx-auto grid h-8 w-8 place-items-center rounded-full text-xs ${isToday ? 'bg-[hsl(var(--primary))] font-semibold text-[hsl(var(--primary-foreground))] shadow-sm' : 'text-[hsl(var(--foreground))]'}`} data-testid={`calendar-day-${d}`}>{localizedNumber(d)}</span>; })}</div>
-              <p className="mt-3 flex items-center gap-2 border-t border-[hsl(var(--border))]/70 pt-3 text-[10px] text-[hsl(var(--muted-foreground))]"><span className="h-2 w-2 rounded-full bg-[hsl(var(--primary))]"/>{tr('اليوم', 'Today')} · {dateLabel}</p>
-            </section>
-          </div>
-          <section id="section-settings" className="soft-card mt-6 scroll-mt-6 rounded-[24px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6" data-testid="section-settings">
-            <div className="mb-4 flex items-center gap-2"><Target size={18} className="text-[hsl(var(--primary))]"/><h2 className="text-lg font-semibold">{t.settings}</h2></div>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div><p className="text-sm font-medium">{tr('لغة التطبيق', 'App language')}</p><p className="mt-1 text-xs leading-6 text-[hsl(var(--muted-foreground))]">{tr('اختاري اللغة التي تناسبكِ.', 'Choose the language that feels right for you.')}</p></div>
-              <button onClick={toggleLanguage} className="flex h-10 items-center justify-center gap-2 self-start rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-4 text-xs font-semibold text-[hsl(var(--primary))] hover:bg-[hsl(var(--muted))] sm:self-auto" aria-label={en ? 'Switch to Arabic' : 'Switch to English'} data-testid="button-settings-language"><Languages size={16}/><span>{en ? 'العربية' : 'English'}</span></button>
+
+          <section className={panel} data-testid="section-habits">
+            <div className="mb-4 flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><Sprout size={18} className="text-sky-600" /><h2 className="text-lg font-extrabold">{t.habitsTitle}</h2></div><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-habit-progress">{number(todayHabits)} of {number(store.habits.length)} complete</p></div><button onClick={() => openEditor('habit')} aria-label={t.addHabit} className="grid h-9 w-9 place-items-center rounded-xl bg-sky-50 text-sky-600 hover:bg-sky-100" data-testid="button-add-habit"><Plus size={17} /></button></div>
+            <div className="mb-4 flex items-center gap-3"><div className="h-2 flex-1 overflow-hidden rounded-full bg-sky-50"><div className="h-full rounded-full bg-sky-400 transition-all duration-500" style={{ width: `${habitProgress}%` }} data-testid="progress-habits" /></div><span className="text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-habit-percent">{number(habitProgress)}%</span></div>
+            <div className="space-y-1">
+              {store.habits.length ? store.habits.map(habit => <div className="group flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-sky-50/70" key={habit.id} data-testid={`habit-row-${habit.id}`}>
+                <button onClick={() => toggleHabit(habit.id)} aria-label={`${habit.completedDate === today ? 'Undo habit' : 'Complete habit'}: ${habitText(habit)}`} className={`grid h-5 w-5 place-items-center rounded-full border ${habit.completedDate === today ? 'border-sky-500 bg-sky-500 text-white' : 'border-sky-300'}`} data-testid={`button-complete-habit-${habit.id}`}>{habit.completedDate === today ? <Check size={12} /> : <Circle size={8} />}</button>
+                <span className={`flex-1 text-sm ${habit.completedDate === today ? 'text-[hsl(var(--muted-foreground))] line-through' : ''}`} data-testid={`text-habit-${habit.id}`}>{habitText(habit)}</span>
+                <button onClick={() => openEditor('habit', habit.id)} className="p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:text-[hsl(var(--primary))] md:opacity-0 md:group-hover:opacity-100" aria-label={`${t.edit}: ${habitText(habit)}`} data-testid={`button-edit-habit-${habit.id}`}><Pencil size={13} /></button>
+                <button onClick={() => removeHabit(habit.id)} className="p-1 text-[hsl(var(--muted-foreground))] opacity-70 hover:text-[hsl(var(--destructive))] md:opacity-0 md:group-hover:opacity-100" aria-label={`${t.delete}: ${habitText(habit)}`} data-testid={`button-delete-habit-${habit.id}`}><Trash2 size={13} /></button>
+              </div>) : <div className="rounded-xl bg-[hsl(var(--muted))]/65 px-4 py-6 text-center text-sm leading-7 text-[hsl(var(--muted-foreground))]" data-testid="empty-habits">{t.noHabits}</div>}
             </div>
-            <p className="mt-5 rounded-xl bg-[hsl(var(--muted))]/55 px-4 py-3 text-xs leading-6 text-[hsl(var(--muted-foreground))]" data-testid="text-local-data-note">{tr('بياناتك محفوظة في هذا المتصفح فقط، ولا تُرسل إلى أي مكان.', 'Your data stays in this browser and is not sent anywhere.')}</p>
+            {store.habits.length > 0 && habitProgress === 100 && <p className="gentle-celebration mt-3 rounded-xl bg-sky-50 px-3 py-2 text-center text-xs font-bold text-sky-700" data-testid="status-habits-celebration">Look at you, keeping all your little promises to yourself.</p>}
           </section>
-          <footer className="mt-8 flex items-center justify-center gap-2 text-[11px] text-[hsl(var(--muted-foreground))]"><Heart size={12} className="text-[hsl(var(--primary))]"/>{tr('مساحة صغيرة، صُنعت بمحبة لكِ', 'A little space, made with love for you')}</footer>
-        </main>
+
+          <section className={panel} data-testid="section-exams">
+            <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2"><CalendarDays size={18} className="text-[hsl(var(--primary))]" /><h2 className="text-lg font-extrabold">{t.examsTitle}</h2></div><button onClick={() => openEditor('exam')} className="grid h-9 w-9 place-items-center rounded-xl bg-pink-50 text-[hsl(var(--primary))]" aria-label={t.addExam} data-testid="button-add-exam"><Plus size={17} /></button></div>
+            {nextExam ? <div className="rounded-2xl bg-[linear-gradient(130deg,#fff0f6,#eff9ff)] p-4" data-testid={`card-nearest-exam-${nextExam.id}`}>
+              <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-extrabold" data-testid={`text-exam-name-${nextExam.id}`}>{examText(nextExam)}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid={`text-exam-date-${nextExam.id}`}>{shortDate(nextExam.date)}</p></div><div className="flex gap-1"><button onClick={() => openEditor('exam', nextExam.id)} className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]" aria-label={t.edit} data-testid={`button-edit-exam-${nextExam.id}`}><Pencil size={14} /></button><button onClick={() => removeExam(nextExam.id)} className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--destructive))]" aria-label={t.delete} data-testid={`button-delete-exam-${nextExam.id}`}><Trash2 size={14} /></button></div></div>
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">{[
+                { label: 'days', value: Math.floor(secondsUntil / 86400), testId: 'countdown-days' },
+                { label: 'hours', value: Math.floor(secondsUntil % 86400 / 3600), testId: 'countdown-hours' },
+                { label: 'minutes', value: Math.floor(secondsUntil % 3600 / 60), testId: 'countdown-minutes' },
+              ].map(item => <div className="rounded-xl bg-white/75 py-2" key={item.label}><strong className="block font-mono text-lg" data-testid={item.testId}>{number(item.value)}</strong><span className="text-[10px] text-[hsl(var(--muted-foreground))]">{item.label}</span></div>)}</div>
+            </div> : <div className="rounded-xl bg-[hsl(var(--muted))]/65 px-3 py-7 text-center text-sm leading-7 text-[hsl(var(--muted-foreground))]" data-testid="empty-exams">{t.noExam}</div>}
+            {store.exams.filter(exam => exam.id !== nextExam?.id).map(exam => <div key={exam.id} className="mt-2 flex items-center justify-between rounded-xl px-3 py-2 text-sm hover:bg-pink-50/70" data-testid={`exam-row-${exam.id}`}><span>{examText(exam)}</span><span className="flex items-center gap-2 text-xs text-[hsl(var(--muted-foreground))]">{shortDate(exam.date)}<button onClick={() => openEditor('exam', exam.id)} aria-label={t.edit} data-testid={`button-edit-exam-${exam.id}`}><Pencil size={13} /></button><button onClick={() => removeExam(exam.id)} aria-label={t.delete} data-testid={`button-delete-exam-${exam.id}`}><Trash2 size={13} /></button></span></div>)}
+          </section>
+
+          <section className={panel} data-testid="section-study">
+            <div className="mb-4 flex items-center gap-2"><BookOpen size={18} className="text-sky-600" /><h2 className="text-lg font-extrabold">{t.studyTitle}</h2></div>
+            <div className="flex items-center gap-4 rounded-2xl bg-sky-50/80 p-4"><div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-100 text-sky-600"><BookOpen size={19} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold" data-testid="text-study-subject">{sessionActive ? (studySubject || 'Study session') : todaySessions.length ? sessionSubjectText(todaySessions[todaySessions.length - 1].subject) : 'A cozy little space for your next idea'}</p><p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]" data-testid="text-study-today">{number(todaySessions.length)} {t.sessionsToday} · {number(studyTotal)} minutes today</p></div><div className="text-right"><span className="text-lg font-extrabold" data-testid="text-study-progress">{number(studyProgress)}%</span><span className="block text-[10px] text-[hsl(var(--muted-foreground))]">of your goal</span></div></div>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-sky-50"><div className="h-full rounded-full bg-sky-400 transition-all duration-500" style={{ width: `${studyProgress}%` }} data-testid="progress-study" /></div>
+            <label className="mt-4 block space-y-1.5 text-xs font-bold text-[hsl(var(--muted-foreground))]"><span>{t.subject}</span><input value={studySubject} onChange={event => setStudySubject(event.target.value)} placeholder="For example, anatomy" className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]" data-testid="input-study-subject" /></label>
+            <button onClick={startSession} disabled={sessionActive} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-sky-100 px-4 py-3 text-sm font-extrabold text-sky-700 hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-70" data-testid="button-start-study"><Play size={15} fill="currentColor" />{sessionActive ? t.sessionInProgress : t.startStudy}</button>
+            <p className="mt-2 text-center text-[10px] text-[hsl(var(--muted-foreground))]">Every session counts toward your day.</p>
+          </section>
+
+          <section className={`${panel} lg:col-span-1`} data-testid="section-timer">
+            <div className="mb-4 flex items-center gap-2"><Clock3 size={18} className="text-[hsl(var(--primary))]" /><h2 className="text-lg font-extrabold">{t.timerTitle}</h2></div>
+            <div className="mb-5 flex rounded-xl bg-pink-50 p-1">{(['focus', 'short', 'long'] as const).map(mode => <button key={mode} onClick={() => setMode(mode)} className={`flex-1 rounded-lg px-1 py-2 text-[11px] transition ${store.timerMode === mode ? 'bg-white font-extrabold text-[hsl(var(--primary))] shadow-sm' : 'text-[hsl(var(--muted-foreground))]'}`} data-testid={`button-timer-mode-${mode}`}>{mode === 'focus' ? t.focus : mode === 'short' ? t.shortBreak : t.longBreak}</button>)}</div>
+            <div className="flex flex-col items-center">
+              <div className="relative grid h-40 w-40 place-items-center">
+                <svg className="-rotate-90" viewBox="0 0 160 160" aria-hidden="true"><circle cx="80" cy="80" r="69" fill="none" stroke="hsl(var(--muted))" strokeWidth="6" /><circle cx="80" cy="80" r="69" fill="none" stroke="hsl(var(--primary))" strokeWidth="6" strokeLinecap="round" strokeDasharray={433.54} strokeDashoffset={433.54 * (1 - timerProgress)} className="transition-[stroke-dashoffset] duration-1000" /></svg>
+                <div className="absolute text-center"><strong className="font-mono text-[34px] font-medium tracking-tight" data-testid="text-timer-countdown">{timerTime}</strong><span className="mt-1 block text-[10px] text-[hsl(var(--muted-foreground))]">{store.timerMode === 'focus' ? t.focus : store.timerMode === 'short' ? t.shortBreak : t.longBreak}</span></div>
+              </div>
+              <div className="mt-2 flex items-center gap-3"><button onClick={() => setTimerRunning(running => !running)} className="flex items-center gap-2 rounded-xl bg-[hsl(var(--primary))] px-5 py-2.5 text-sm font-extrabold text-white hover:opacity-90" data-testid="button-timer-toggle">{timerRunning ? <><Pause size={15} />{t.pause}</> : <><Play size={15} fill="currentColor" />{t.start}</>}</button><button onClick={() => { setTimerRunning(false); setSessionActive(false); saveStore(current => ({ ...current, remaining: timerDuration })); }} aria-label={t.reset} className="grid h-10 w-10 place-items-center rounded-xl border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--primary))]" data-testid="button-timer-reset"><RotateCcw size={16} /></button></div>
+            </div>
+          </section>
+
+          <section className={`${panel} lg:col-span-1`} data-testid="section-statistics">
+            <div className="mb-4 flex items-center gap-2"><BarChart3 size={18} className="text-sky-600" /><h2 className="text-lg font-extrabold">{t.todayStats}</h2></div>
+            <div className="rounded-2xl bg-[linear-gradient(110deg,#fff1f6,#eff9ff)] p-4"><div className="mb-2 flex items-center justify-between text-xs"><span className="text-[hsl(var(--muted-foreground))]">{t.progress}</span><strong data-testid="stat-overall-progress">{number(overallProgress)}%</strong></div><div className="h-2 overflow-hidden rounded-full bg-white/80"><div className="h-full rounded-full bg-[linear-gradient(90deg,hsl(var(--primary)),#83c9e8)] transition-all duration-500" style={{ width: `${overallProgress}%` }} data-testid="progress-overall" /></div><p className="mt-3 text-xs leading-5 text-[hsl(var(--muted-foreground))]">Every small step belongs in the story you’re writing.</p></div>
+          </section>
+
+          <section className="relative overflow-hidden rounded-[25px] border border-pink-200/75 bg-[linear-gradient(135deg,#fff2f7,#fffafc)] p-5 sm:p-6" data-testid="section-love-letter">
+            <div className="heart-float pointer-events-none absolute -bottom-6 -left-4 text-pink-200/60"><Heart size={105} strokeWidth={.8} /></div>
+            <div className="relative"><div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-2 text-[hsl(var(--primary))]"><Heart size={17} /><h2 className="text-lg font-extrabold">{t.letterTitle}</h2></div><button onClick={() => { setLetterDraft(''); setEditingMessage(null); setLetterEditor(true); }} className="rounded-lg p-2 text-[hsl(var(--primary))] hover:bg-white/75" aria-label="Add a love note" data-testid="button-add-love-note"><Plus size={16} /></button></div>
+              <p className="serif-display min-h-[74px] text-[18px] leading-8 text-[hsl(var(--foreground))]" data-testid="text-love-letter">{dailyLetter}</p>
+              {!store.messages.length && <p className="mt-1 text-xs leading-6 text-[hsl(var(--muted-foreground))]">A little reminder: you are loved, capable, and celebrated every day.</p>}
+              {store.messages.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{store.messages.map(message => <div key={message.id} className="flex max-w-full items-center gap-1 rounded-full border border-pink-200 bg-white/75 px-2.5 py-1 text-[10px]"><span className="max-w-32 truncate">{message.text}</span><button onClick={() => { setLetterDraft(message.text); setEditingMessage(message.id); setLetterEditor(true); }} aria-label={`Edit note: ${message.text}`} data-testid={`button-edit-message-${message.id}`}><Pencil size={11} /></button><button onClick={() => saveStore(current => ({ ...current, messages: current.messages.filter(item => item.id !== message.id) }))} aria-label={`Delete note: ${message.text}`} data-testid={`button-delete-message-${message.id}`}><X size={12} /></button></div>)}</div>}
+            </div>
+          </section>
+
+          <section className={panel} data-testid="section-calendar">
+            <div className="mb-4 flex items-center justify-between"><div className="flex items-center gap-2"><CalendarDays size={18} className="text-[hsl(var(--primary))]" /><h2 className="text-lg font-extrabold">{t.calendarTitle}</h2></div><div className="flex items-center gap-1"><button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} aria-label="Previous month" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-pink-50" data-testid="button-calendar-previous"><ChevronLeft size={17} /></button><span className="min-w-24 text-center text-xs font-bold" data-testid="text-calendar-month">{monthLabel}</span><button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} aria-label="Next month" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-pink-50" data-testid="button-calendar-next"><ChevronRight size={17} /></button></div></div>
+            <div className="grid grid-cols-7 gap-y-1 text-center">{weekDays.map((day, index) => <span className="py-2 text-[10px] font-bold text-[hsl(var(--muted-foreground))]" key={`${day}-${index}`}>{day}</span>)}{Array.from({ length: firstDay }, (_, index) => <span key={`blank-${index}`} />)}{Array.from({ length: daysInMonth }, (_, index) => { const day = index + 1; const isToday = day === Number(dateParts.day) && month.getMonth() === Number(dateParts.month) - 1 && month.getFullYear() === Number(dateParts.year); return <span key={day} className={`mx-auto grid h-8 w-8 place-items-center rounded-full text-xs ${isToday ? 'bg-[hsl(var(--primary))] font-extrabold text-white shadow-sm' : 'text-[hsl(var(--foreground))]'}`} data-testid={`calendar-day-${day}`}>{number(day)}</span>; })}</div>
+            <p className="mt-3 flex items-center gap-2 border-t border-[hsl(var(--border))]/70 pt-3 text-[10px] text-[hsl(var(--muted-foreground))]"><span className="h-2 w-2 rounded-full bg-[hsl(var(--primary))]" />Today · {dateLabel}</p>
+          </section>
+        </div>
+        <footer className="mt-8 flex items-center justify-center gap-2 text-[11px] font-bold text-[hsl(var(--muted-foreground))]"><Heart size={12} className="text-[hsl(var(--primary))]" />A little corner made just for you</footer>
       </div>
-      {notice && <div role="status" aria-live="polite" className={`fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-[hsl(var(--foreground))] px-5 py-3 text-sm text-[hsl(var(--background))] shadow-xl ${notice === t.timerDone ? 'completion-pop' : ''}`} data-testid="status-notice">{notice}</div>}
-      {(editor || letterEditor) && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#3d2632]/35 p-4 backdrop-blur-sm" onMouseDown={e => { if (e.target === e.currentTarget) { setEditor(null); setLetterEditor(false); } }} data-testid="dialog-backdrop">
-        <div role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="w-full max-w-md rounded-[24px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-6 shadow-2xl">
-          <div className="mb-5 flex items-center justify-between"><h2 id="dialog-title" className="serif-display text-2xl">{letterEditor ? t.letterTitle : editor?.kind === 'task' ? t.tasksTitle : editor?.kind === 'habit' ? t.habitsTitle : t.examsTitle}</h2><button onClick={() => { setEditor(null); setLetterEditor(false); }} aria-label={t.cancel} data-testid="button-close-dialog" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[hsl(var(--muted))]"><X size={17}/></button></div>
-          {letterEditor ? <form onSubmit={saveLetter} className="space-y-4"><textarea autoFocus value={letterDraft} onChange={e => setLetterDraft(e.target.value)} placeholder={t.letterPlaceholder} rows={5} className="w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-3 text-sm leading-7 outline-none focus:border-[hsl(var(--primary))]" data-testid="input-love-letter"/><div className="flex justify-end gap-2"><button type="button" onClick={() => setLetterEditor(false)} className="rounded-xl px-4 py-2 text-sm text-[hsl(var(--muted-foreground))]" data-testid="button-cancel-letter">{t.cancel}</button><button className="rounded-xl bg-[hsl(var(--primary))] px-5 py-2 text-sm font-semibold text-white" data-testid="button-save-letter">{t.save}</button></div></form> :
+
+      {notice && <div role="status" aria-live="polite" className={`completion-pop fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-2xl bg-[hsl(var(--foreground))] px-5 py-3 text-sm text-white shadow-xl`} data-testid="status-notice">{notice}</div>}
+      {(editor || letterEditor) && <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#5f4352]/30 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) { setEditor(null); setLetterEditor(false); } }} data-testid="dialog-backdrop">
+        <div role="dialog" aria-modal="true" aria-labelledby="dialog-title" className="w-full max-w-md rounded-[25px] border border-pink-100 bg-[hsl(var(--card))] p-6 shadow-2xl">
+          <div className="mb-5 flex items-center justify-between"><h2 id="dialog-title" className="serif-display text-2xl">{letterEditor ? t.letterTitle : editor?.kind === 'task' ? t.tasksTitle : editor?.kind === 'habit' ? t.habitsTitle : t.examsTitle}</h2><button onClick={() => { setEditor(null); setLetterEditor(false); }} aria-label={t.cancel} data-testid="button-close-dialog" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-[hsl(var(--muted))]"><X size={17} /></button></div>
+          {letterEditor ? <form onSubmit={saveLetter} className="space-y-4"><textarea autoFocus value={letterDraft} onChange={event => setLetterDraft(event.target.value)} placeholder="Write your sweet note here..." rows={5} className="w-full resize-none rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-4 py-3 text-sm leading-7 outline-none focus:border-[hsl(var(--primary))]" data-testid="input-love-letter" /><div className="flex justify-end gap-2"><button type="button" onClick={() => { setLetterEditor(false); setEditingMessage(null); }} className="rounded-xl px-4 py-2 text-sm text-[hsl(var(--muted-foreground))]" data-testid="button-cancel-letter">{t.cancel}</button><button className="rounded-xl bg-[hsl(var(--primary))] px-5 py-2 text-sm font-extrabold text-white" data-testid="button-save-letter">{t.save}</button></div></form> :
             <form onSubmit={submitEditor} className="space-y-4">
-              <label className="block space-y-1.5 text-xs font-medium text-[hsl(var(--muted-foreground))]"><span>{editor?.kind === 'habit' || editor?.kind === 'exam' ? t.name : t.title}</span><input autoFocus value={fields.title} onChange={e => setFields(f => ({...f, title:e.target.value}))} required className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]" data-testid="input-editor-title"/></label>
-              {editor?.kind === 'exam' && <label className="block space-y-1.5 text-xs font-medium text-[hsl(var(--muted-foreground))]"><span>{t.date}</span><input type="date" value={fields.date} onChange={e => setFields(f => ({...f, date:e.target.value}))} required min={today} className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))]" data-testid="input-exam-date"/></label>}
-              {editor?.kind === 'task' && <label className="block space-y-1.5 text-xs font-medium text-[hsl(var(--muted-foreground))]"><span>{t.priority}</span><select value={fields.priority} onChange={e => setFields(f => ({...f, priority:e.target.value as Task['priority']}))} className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))]" data-testid="select-task-priority"><option value="low">{t.low}</option><option value="medium">{t.medium}</option><option value="high">{t.high}</option></select></label>}
-              <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setEditor(null)} className="rounded-xl px-4 py-2 text-sm text-[hsl(var(--muted-foreground))]" data-testid="button-cancel-editor">{t.cancel}</button><button type="submit" className="rounded-xl bg-[hsl(var(--primary))] px-5 py-2 text-sm font-semibold text-white" data-testid="button-save-editor">{t.save}</button></div>
+              <label className="block space-y-1.5 text-xs font-bold text-[hsl(var(--muted-foreground))]"><span>{editor?.kind === 'habit' || editor?.kind === 'exam' ? t.name : t.title}</span><input autoFocus value={fields.title} onChange={event => setFields(current => ({ ...current, title: event.target.value }))} required className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))] outline-none focus:border-[hsl(var(--primary))]" data-testid="input-editor-title" /></label>
+              {editor?.kind === 'exam' && <label className="block space-y-1.5 text-xs font-bold text-[hsl(var(--muted-foreground))]"><span>{t.date}</span><input type="date" value={fields.date} onChange={event => setFields(current => ({ ...current, date: event.target.value }))} required min={today} className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))]" data-testid="input-exam-date" /></label>}
+              {editor?.kind === 'task' && <label className="block space-y-1.5 text-xs font-bold text-[hsl(var(--muted-foreground))]"><span>{t.priority}</span><select value={fields.priority} onChange={event => setFields(current => ({ ...current, priority: event.target.value as Task['priority'] }))} className="w-full rounded-xl border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2.5 text-sm text-[hsl(var(--foreground))]" data-testid="select-task-priority"><option value="low">{t.low}</option><option value="medium">{t.medium}</option><option value="high">{t.high}</option></select></label>}
+              <div className="flex justify-end gap-2 pt-2"><button type="button" onClick={() => setEditor(null)} className="rounded-xl px-4 py-2 text-sm text-[hsl(var(--muted-foreground))]" data-testid="button-cancel-editor">{t.cancel}</button><button type="submit" className="rounded-xl bg-[hsl(var(--primary))] px-5 py-2 text-sm font-extrabold text-white" data-testid="button-save-editor">{t.save}</button></div>
             </form>}
         </div>
       </div>}
-    </div>
+    </main>
   );
 }
 
 function Router() {
   return (
-    // Keep a shared shell (sidebar, navbar) outside the boundary so it
-    // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={Home} />

@@ -1,16 +1,16 @@
-# Dr. Hala
+# zeze time
 
-A bilingual Arabic/English study and wellbeing dashboard for organizing tasks, habits, exams, and focused study sessions.
+An English-only, one-page study companion with encouraging notes, task and habit tracking, exam reminders, and a focus timer.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm --filter @workspace/dr-hala run dev` — run the Dr. Hala web app
+- `pnpm --filter @workspace/dr-hala run dev` — run the zeze time web app
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Dr. Hala stores personal app data in the current browser's local storage; it does not use the API server or database.
+- zeze time stores personal app data in the current browser's local storage; it does not use the API server or database.
 - Source: [jaafarslyman/Supebun8](https://github.com/jaafarslyman/Supebun8)
 
 ## Stack
@@ -24,18 +24,19 @@ A bilingual Arabic/English study and wellbeing dashboard for organizing tasks, h
 
 ## Where things live
 
-- `artifacts/dr-hala/` — Dr. Hala web app, its styles, and static assets
+- `artifacts/dr-hala/` — zeze time web app, its styles, and static assets
 - `lib/api-spec/openapi.yaml` — shared API contract
 - `lib/db/src/schema/` — shared database schema
 
 ## Architecture decisions
 
-- The Dr. Hala dashboard is client-only; personal data stays in the browser that created it.
+- The app is client-only; personal data stays in the browser that created it.
 
 ## Product
 
 - Manage tasks, habits, and exam dates; use the study timer, calendar, and daily progress summaries.
-- Switch between Arabic and English.
+- Read encouraging notes in a single English-language experience.
+- Brand direction: “zeze time” is an affectionate study companion made for the user's girlfriend, with a white, pink, and baby-blue palette and an orange cat mascot.
 
 ## User preferences
 
