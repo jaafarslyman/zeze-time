@@ -329,14 +329,9 @@ function Home() {
     <main dir="ltr" className="min-h-[100dvh] text-[hsl(var(--foreground))]" data-testid="page-home">
       <div className="mx-auto max-w-[1120px] px-4 pb-10 pt-5 sm:px-7 sm:pt-8">
         <header className="mb-6 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-14 overflow-hidden rounded-[19px] border-2 border-white bg-[hsl(var(--secondary))] shadow-sm sm:h-[66px] sm:w-[66px]">
-              <img src="/zeze-cat-source.png" alt="Orange kitten wearing baby-blue headphones" className="h-full w-full object-cover" />
-            </div>
-            <div>
-              <p className="serif-display text-[26px] leading-none tracking-tight sm:text-[31px]">zeze time</p>
-              <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">your little study nook</p>
-            </div>
+          <div>
+            <p className="serif-display text-[26px] leading-none tracking-tight sm:text-[31px]">zeze time</p>
+            <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">your little study nook</p>
           </div>
           <div className="hidden rounded-2xl border border-[hsl(var(--border))] bg-white/75 px-4 py-2.5 text-right sm:block">
             <p className="text-[11px] text-[hsl(var(--muted-foreground))]" data-testid="text-current-date">{dateLabel}</p>
@@ -355,11 +350,7 @@ function Home() {
               <span className="text-xs text-[hsl(var(--muted-foreground))]">{quoteIndex + 1} of {quotes.length}</span>
             </div>
           </div>
-          <img src="/zeze-cat-source.png" alt="" aria-hidden="true" className="heart-float pointer-events-none absolute -bottom-9 -right-5 hidden w-[245px] rounded-[32px] opacity-95 mix-blend-multiply sm:block md:w-[285px]" />
-          <div className="pointer-events-none absolute bottom-5 right-[220px] hidden text-pink-300/70 sm:block"><Sparkles size={30} /></div>
-          <div className="mt-5 sm:hidden">
-            <img src="/zeze-cat-source.png" alt="Orange kitten wearing baby-blue headphones" className="mx-auto h-32 w-32 rounded-[28px] object-cover shadow-sm" />
-          </div>
+          <div className="pointer-events-none absolute bottom-5 right-8 hidden text-pink-300/70 sm:block"><Sparkles size={30} /></div>
         </section>
 
         <section className="mb-6 grid grid-cols-3 gap-3" aria-label="Today at a glance">
