@@ -1,30 +1,26 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { Session } from '@supabase/supabase-js';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { AuthScreen } from '@/components/auth-screen';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import BoardPageContainer from '@/pages/BoardPageContainer';
 import {
   createInitialStore,
-  parseStore,
   readLocalStore,
   STORE_KEY,
-  userStoreKey,
   writeLocalStore,
   type Exam,
   type Habit,
   type Store,
   type Task,
 } from '@/lib/store';
-import { supabase, supabaseConfigurationIssue } from '@/lib/supabase';
 import NotFound from '@/pages/not-found';
 import {
   ArrowRight, BarChart3, BookOpen, CalendarDays, Check, CheckCircle2, ChevronLeft,
-  ChevronRight, Circle, Clock3, Heart, Leaf, ListChecks, Pause, Pencil, Play,
-  Plus, RotateCcw, Sparkles, Sprout, Trash2, X,
+  ChevronRight, Circle, Clock3, Heart, House, Leaf, ListChecks, Pause, Pencil, Play,
+  Plus, RotateCcw, Sparkles, Sprout, StickyNote, Trash2, X,
 } from 'lucide-react';
-import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
+import { Link, Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
 
@@ -52,27 +48,10 @@ const quotes = [
   'Take a breath, love. You have got this.',
 ];
 
-function Home({
-  userId,
-  userEmail,
-  authError,
-  onSignOut,
-}: {
-  userId?: string;
-  userEmail?: string;
-  authError?: string;
-  onSignOut?: () => void;
-}) {
+function Home() {
   const [store, setStore] = useState<Store>(() =>
-    userId
-      ? readLocalStore(userStoreKey(userId)) ?? readLocalStore(STORE_KEY) ?? createInitialStore()
-      : readLocalStore(STORE_KEY) ?? createInitialStore(),
+    readLocalStore(STORE_KEY) ?? createInitialStore(),
   );
-  const [cloudReady, setCloudReady] = useState(!userId);
-  const [cloudLoadError, setCloudLoadError] = useState('');
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  const [syncStatus, setSyncStatus] = useState<'saving' | 'saved' | 'error'>('saved');
-  const [syncAttempt, setSyncAttempt] = useState(0);
   const [clock, setClock] = useState(new Date());
   const dateParts = damascusDateParts(clock);
   const today = makeDateKey(dateParts.year, dateParts.month, dateParts.day);
@@ -95,62 +74,6 @@ function Home({
     setStore(current => typeof next === 'function' ? next(current) : next);
 
   useEffect(() => {
-    const client = supabase;
-    if (!userId || !client) {
-      setCloudReady(true);
-      return;
-    }
-
-    let cancelled = false;
-    const loadCloudStore = async () => {
-      setCloudReady(false);
-      setCloudLoadError('');
-      const { data, error } = await client
-        .from('user_study_data')
-        .select('state')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (cancelled) return;
-      if (error) {
-        setCloudLoadError(error.message);
-        return;
-      }
-
-      if (data) {
-        setStore(parseStore(data.state));
-        setCloudReady(true);
-        return;
-      }
-
-      const initialStore =
-        readLocalStore(userStoreKey(userId)) ??
-        readLocalStore(STORE_KEY) ??
-        createInitialStore();
-      const { error: saveError } = await client
-        .from('user_study_data')
-        .upsert(
-          { user_id: userId, state: initialStore, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' },
-        );
-
-      if (cancelled) return;
-      if (saveError) {
-        setCloudLoadError(saveError.message);
-        return;
-      }
-
-      setStore(initialStore);
-      setCloudReady(true);
-    };
-
-    void loadCloudStore();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId, loadAttempt]);
-
-  useEffect(() => {
     document.documentElement.lang = 'en';
     document.documentElement.dir = 'ltr';
   }, []);
@@ -159,32 +82,8 @@ function Home({
     return () => window.clearInterval(id);
   }, []);
   useEffect(() => {
-    if (userId && !cloudReady) return;
-    writeLocalStore(userId ? userStoreKey(userId) : STORE_KEY, store);
-  }, [store, userId, cloudReady]);
-
-  useEffect(() => {
-    const client = supabase;
-    if (!userId || !client || !cloudReady || timerRunning) return;
-
-    let active = true;
-    setSyncStatus('saving');
-    const timeout = window.setTimeout(async () => {
-      const { error } = await client
-        .from('user_study_data')
-        .upsert(
-          { user_id: userId, state: store, updated_at: new Date().toISOString() },
-          { onConflict: 'user_id' },
-        );
-      if (!active) return;
-      setSyncStatus(error ? 'error' : 'saved');
-    }, 650);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timeout);
-    };
-  }, [store, userId, cloudReady, timerRunning, syncAttempt]);
+    writeLocalStore(STORE_KEY, store);
+  }, [store]);
   useEffect(() => {
     if (!timerRunning) return;
     const id = window.setInterval(() => {
@@ -361,79 +260,17 @@ function Home({
   };
   const panel = 'soft-card rounded-[25px] border border-[hsl(var(--card-border))] bg-[hsl(var(--card))] p-5 sm:p-6';
 
-  if (userId && !cloudReady) {
-    return (
-      <main className="grid min-h-[100dvh] place-items-center px-4 py-10">
-        <section className="w-full max-w-md rounded-[28px] border border-pink-100 bg-white p-7 text-center shadow-[0_22px_70px_rgba(135,91,117,.12)]">
-          <p className="serif-display text-3xl">zeze time</p>
-          {cloudLoadError ? (
-            <>
-              <p className="mt-4 text-sm leading-6 text-red-700" role="alert">
-                We couldn’t load your private study data: {cloudLoadError}
-              </p>
-              <button
-                onClick={() => setLoadAttempt(value => value + 1)}
-                className="mt-5 rounded-xl bg-[hsl(var(--primary))] px-5 py-3 text-sm font-extrabold text-white"
-              >
-                Try again
-              </button>
-              {onSignOut && (
-                <button onClick={onSignOut} className="ml-3 rounded-xl px-4 py-3 text-sm font-bold text-[hsl(var(--muted-foreground))]">
-                  Sign out
-                </button>
-              )}
-            </>
-          ) : (
-            <p className="mt-4 text-sm text-[hsl(var(--muted-foreground))]" role="status">
-              Loading your private study space...
-            </p>
-          )}
-        </section>
-      </main>
-    );
-  }
-
   return (
     <main dir="ltr" className="min-h-[100dvh] text-[hsl(var(--foreground))]" data-testid="page-home">
-      <div className="mx-auto max-w-[1120px] px-4 pb-10 pt-5 sm:px-7 sm:pt-8">
-        {authError && (
-          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-5 text-red-800" role="alert">
-            {authError}
-          </div>
-        )}
-        {!userId && (
-          <div className="mb-5 rounded-2xl border border-sky-200 bg-sky-50/90 px-4 py-3 text-xs leading-5 text-sky-900" role="status" data-testid="status-local-only">
-            <strong>Local-only mode.</strong> Your data is saved in this browser. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable private account sync. {supabaseConfigurationIssue && supabaseConfigurationIssue !== 'Supabase cloud sync is not configured yet.' ? supabaseConfigurationIssue : ''}
-          </div>
-        )}
-        {userId && syncStatus === 'error' && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs leading-5 text-red-800" role="alert" data-testid="status-sync-error">
-            <span>Your latest changes could not sync to Supabase. They are still saved on this device.</span>
-            <button onClick={() => setSyncAttempt(value => value + 1)} className="rounded-lg bg-white px-3 py-1.5 font-bold text-red-800">
-              Retry sync
-            </button>
-          </div>
-        )}
+      <div className="mx-auto max-w-[1120px] px-4 pb-32 pt-5 sm:px-7 sm:pt-8">
         <header className="mb-6 flex items-center justify-between gap-4">
           <div>
             <p className="serif-display text-[26px] leading-none tracking-tight sm:text-[31px]">zeze time</p>
             <p className="mt-1.5 text-[11px] font-bold uppercase tracking-[.18em] text-[hsl(var(--muted-foreground))]">your little study nook</p>
           </div>
-          <div className="flex items-center gap-2">
-            {userId && (
-              <div className="max-w-40 text-right sm:max-w-56">
-                <p className="truncate text-[10px] text-[hsl(var(--muted-foreground))]" title={userEmail}>
-                  {timerRunning ? 'Timer progress is saved on this device' : syncStatus === 'saving' ? 'Saving to your account...' : syncStatus === 'error' ? 'Sync needs attention' : 'Saved to your account'}
-                </p>
-                <button onClick={onSignOut} className="mt-1 text-xs font-bold text-[hsl(var(--primary))] hover:underline">
-                  Sign out{userEmail ? ` · ${userEmail}` : ''}
-                </button>
-              </div>
-            )}
-            <div className="hidden rounded-2xl border border-[hsl(var(--border))] bg-white/75 px-4 py-2.5 text-right sm:block">
-              <p className="text-[11px] text-[hsl(var(--muted-foreground))]" data-testid="text-current-date">{dateLabel}</p>
-              <p className="mt-0.5 text-xs font-bold">{dateParts.hour < 12 ? 'Good morning, lovely' : 'Good evening, lovely'}</p>
-            </div>
+          <div className="hidden rounded-2xl border border-[hsl(var(--border))] bg-white/75 px-4 py-2.5 text-right sm:block">
+            <p className="text-[11px] text-[hsl(var(--muted-foreground))]" data-testid="text-current-date">{dateLabel}</p>
+            <p className="mt-0.5 text-xs font-bold">{dateParts.hour < 12 ? 'Good morning, lovely' : 'Good evening, lovely'}</p>
           </div>
         </header>
 
@@ -572,24 +409,51 @@ function Home({
   );
 }
 
-function Router({
-  userId,
-  userEmail,
-  authError,
-  onSignOut,
-}: {
-  userId?: string;
-  userEmail?: string;
-  authError?: string;
-  onSignOut?: () => void;
-}) {
+function BottomNavigation() {
+  const [location] = useLocation();
+  const isHome = location === '/';
+  const isBoard = location === '/board';
+
   return (
-    <RoutedErrorBoundary>
-      <Switch>
-        <Route path="/" component={() => <Home userId={userId} userEmail={userEmail} authError={authError} onSignOut={onSignOut} />} />
-        <Route component={NotFound} />
-      </Switch>
-    </RoutedErrorBoundary>
+    <nav
+      aria-label="Page navigation"
+      className="fixed left-1/2 z-40 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/80 bg-white/85 p-1.5 shadow-[0_12px_35px_rgba(115,75,95,.2)] backdrop-blur-xl"
+      style={{ bottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
+      <Link
+        href="/"
+        aria-label="Home"
+        aria-current={isHome ? 'page' : undefined}
+        data-testid="link-home"
+        className={`grid h-12 w-12 place-items-center rounded-full transition ${isHome ? 'bg-[hsl(var(--primary))] text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-pink-50 hover:text-[hsl(var(--primary))]'}`}
+      >
+        <House size={20} strokeWidth={2.2} />
+      </Link>
+      <Link
+        href="/board"
+        aria-label="Memory board"
+        aria-current={isBoard ? 'page' : undefined}
+        data-testid="link-board"
+        className={`grid h-12 w-12 place-items-center rounded-full transition ${isBoard ? 'bg-[hsl(var(--primary))] text-white shadow-sm' : 'text-[hsl(var(--muted-foreground))] hover:bg-pink-50 hover:text-[hsl(var(--primary))]'}`}
+      >
+        <StickyNote size={20} strokeWidth={2.2} />
+      </Link>
+    </nav>
+  );
+}
+
+function Router() {
+  return (
+    <>
+      <RoutedErrorBoundary>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/board" component={BoardPageContainer} />
+          <Route component={NotFound} />
+        </Switch>
+      </RoutedErrorBoundary>
+      <BottomNavigation />
+    </>
   );
 }
 
@@ -599,85 +463,12 @@ function RoutedErrorBoundary({ children }: { children: ReactNode }) {
 }
 
 function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [authLoading, setAuthLoading] = useState(Boolean(supabase));
-  const [authError, setAuthError] = useState('');
-
-  useEffect(() => {
-    if (!supabase) {
-      setAuthLoading(false);
-      return;
-    }
-
-    let active = true;
-    void supabase.auth
-      .getSession()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) setAuthError(error.message);
-        setSession(data.session);
-        setAuthLoading(false);
-      })
-      .catch((sessionError: unknown) => {
-        if (!active) return;
-        setAuthError(
-          sessionError instanceof Error
-            ? sessionError.message
-            : 'We could not restore your sign-in session.',
-        );
-        setAuthLoading(false);
-      });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
-      setAuthLoading(false);
-      setAuthError('');
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const signOut = async () => {
-    if (!supabase) return;
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) setAuthError(error.message);
-    } catch (signOutError) {
-      setAuthError(
-        signOutError instanceof Error
-          ? signOutError.message
-          : 'We could not sign you out. Please try again.',
-      );
-    }
-  };
-
-  const appContent = !supabase
-    ? (
-      <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-        <Router />
-      </WouterRouter>
-    )
-    : authLoading
-      ? (
-        <main className="grid min-h-[100dvh] place-items-center text-sm text-[hsl(var(--muted-foreground))]" role="status">
-          Loading your study space...
-        </main>
-      )
-      : session
-        ? (
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-            <Router userId={session.user.id} userEmail={session.user.email} authError={authError} onSignOut={signOut} />
-          </WouterRouter>
-        )
-        : <AuthScreen client={supabase} initialError={authError} />;
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        {appContent}
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <Router />
+        </WouterRouter>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

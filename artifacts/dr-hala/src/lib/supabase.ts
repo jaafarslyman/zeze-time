@@ -14,20 +14,22 @@ function isHttpUrl(value: string) {
 
 export const supabaseConfigurationIssue =
   !projectUrl && !publicKey
-    ? "Supabase cloud sync is not configured yet."
+    ? "Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to connect the shared board."
     : !projectUrl || !publicKey
-      ? "Cloud sync needs both VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+      ? "The shared board needs both VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
       : !isHttpUrl(projectUrl)
         ? "VITE_SUPABASE_URL must be a valid HTTP or HTTPS URL."
         : null;
 
+export const supabaseConfigured = supabaseConfigurationIssue === null;
+
 export const supabase =
-  supabaseConfigurationIssue === null
+  supabaseConfigured
     ? createClient(projectUrl, publicKey, {
         auth: {
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          persistSession: true,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          persistSession: false,
         },
       })
     : null;

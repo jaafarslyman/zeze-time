@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Zeze Time"
-description = "A personal study companion for tracking tasks, habits, exams, focus sessions, and daily progress, with private Supabase sync when configured."
+description = "A two-page study companion with locally saved study tools and a shared Supabase photo-and-note board."
 version = "1.0.0"
 id = "artifacts/dr-hala"
 router = "path"

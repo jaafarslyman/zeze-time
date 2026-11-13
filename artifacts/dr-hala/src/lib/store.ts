@@ -34,10 +34,6 @@ export type Store = {
 
 export const STORE_KEY = "dr-hala-sanctuary-v1";
 
-export function userStoreKey(userId: string) {
-  return `${STORE_KEY}:${userId}`;
-}
-
 export function createInitialStore(): Store {
   return {
     tasks: [],

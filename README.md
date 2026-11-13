@@ -1,8 +1,8 @@
 # Zeze Time
 
-Zeze Time is a personal study companion for tasks, habits, exam dates, focus
-sessions, and daily progress. It keeps working in local-only mode and can sync
-each account's data privately to Supabase.
+Zeze Time is a personal study companion with a shared photo-and-note board.
+Home-page study data stays in browser storage. Board items and photos are stored
+in Supabase and shared without accounts or sign-in.
 
 ## Run it
 
@@ -12,32 +12,28 @@ The Replit web workflow starts the app. For a local development shell:
 pnpm --filter @workspace/dr-hala run dev
 ```
 
-## Connect Supabase
+## Set up the shared board
 
-1. In your Supabase project, open **SQL Editor** and run
-   [`supabase/schema.sql`](supabase/schema.sql).
-2. In the Supabase project's API settings, copy the project URL and its public
-   `anon`/publishable key. Do not use the `service_role` key in this browser app.
-3. Add these environment variables in Replit Secrets:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. In Supabase Auth, enable email/password sign-in. Add the app's Replit
-   development URL to the allowed redirect URLs so email confirmation can return
-   to the app.
-5. Restart the web app, create an account, and sign in.
+1. In the Supabase project, run [`supabase/schema.sql`](supabase/schema.sql)
+   once in **SQL Editor**. It creates the board table, public access policies,
+   and the photo bucket.
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in Replit Secrets.
+   Use the public anon/publishable key, never the `service_role` key.
+3. Restart the web app.
 
-The table uses row-level security: each signed-in user can only read and update
-their own row. When an account has no cloud record yet, Zeze Time copies any
-existing browser-saved data into that account. New accounts otherwise start
-with empty lists.
+The board is intentionally public: anyone who can reach the app can view,
+add, move, and edit its notes, captions, colors, and photos. The app does not
+offer a delete action. Do not put private photos or sensitive notes on the
+board. Supabase enforces the image type and 10 MB limits for uploads; the app
+uses JPEG, PNG, and WebP files.
 
-Until both environment variables are present, the app clearly indicates that
-data is saved only in the current browser. In that mode, data does not sync
-between devices or accounts.
+If Supabase isn't configured yet, the home page still works with local browser
+storage and the board shows setup instructions. Board content is never saved
+to local storage.
 
 ## Checks
 
 ```sh
 pnpm --filter @workspace/dr-hala run typecheck
-pnpm run build
+PORT=24973 BASE_PATH=/ pnpm --filter @workspace/dr-hala run build
 ```
