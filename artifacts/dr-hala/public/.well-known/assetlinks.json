@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.zezetime.app",
+        "sha256_cert_fingerprints": ["A6:CB:E9:5E:A0:52:CD:FF:99:89:4B:C5:00:2E:33:51:21:C4:EA:EE:14:08:9A:7A:0A:F0:B0:56:72:F7:CF:64"]
+      }
+    }]

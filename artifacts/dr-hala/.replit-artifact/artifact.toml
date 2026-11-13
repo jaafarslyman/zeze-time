@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Zeze Time"
+description = "A personal study companion for tracking tasks, habits, exams, focus sessions, and daily progress, with private Supabase sync when configured."
+version = "1.0.0"
+id = "artifacts/dr-hala"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24973
+
+[services.development]
+run = "pnpm --filter @workspace/dr-hala run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/dr-hala", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/dr-hala/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24973"
+BASE_PATH = "/"
